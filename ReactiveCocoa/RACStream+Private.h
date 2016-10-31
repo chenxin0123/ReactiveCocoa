@@ -1,4 +1,4 @@
-//
+//!
 //  RACStream+Private.h
 //  ReactiveCocoa
 //
@@ -18,6 +18,7 @@
 //           values.
 //
 // Returns a combined stream.
+/// 返回值为2-tuples的流 值为嵌套类型 如:(((1), 2), 3)
 + (instancetype)join:(id<NSFastEnumeration>)streams block:(RACStream * (^)(id, id))block;
 
 @end

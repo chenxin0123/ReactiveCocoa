@@ -27,6 +27,8 @@
  * @note This statement cannot be used within scopes defined without braces
  * (like a one line \c if). In practice, this is not an issue, since \@onExit is
  * a useless construct in such a case anyways.
+ * __attribute__((cleanup(...)))，用于修饰一个变量，在它的作用域结束时可以自动执行一个指定的方法
+ * 声明一个block 在作用域结束之后调用rac_executeCleanupBlock(block)
  */
 #define onExit \
     rac_keywordify \
@@ -41,6 +43,7 @@
  * (if they were live upon entry).
  *
  * See #strongify for an example of usage.
+ * 对每一项调用 rac_weakify_(index,__weak,args[index])
  */
 #define weakify(...) \
     rac_keywordify \
@@ -49,6 +52,7 @@
 /**
  * Like #weakify, but uses \c __unsafe_unretained instead, for targets or
  * classes that do not support weak references.
+ * 对每一项调用 rac_weakify_(index,__unsafe_unretained,args[index])
  */
 #define unsafeify(...) \
     rac_keywordify \
@@ -94,6 +98,7 @@ static inline void rac_executeCleanupBlock (__strong rac_cleanupBlock_t *block) 
     (*block)();
 }
 
+/// CONTEXT 是修饰符 并不一定是weak
 #define rac_weakify_(INDEX, CONTEXT, VAR) \
     CONTEXT __typeof__(VAR) metamacro_concat(VAR, _weak_) = (VAR);
 

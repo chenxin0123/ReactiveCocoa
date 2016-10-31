@@ -1,4 +1,4 @@
-//
+//!
 //  RACValueTransformer.h
 //  ReactiveCocoa
 //
@@ -9,6 +9,7 @@
 #import <Foundation/Foundation.h>
 
 // A private block based transformer.
+// 不支持Reverse
 @interface RACValueTransformer : NSValueTransformer
 
 + (instancetype)transformerWithBlock:(id (^)(id value))block;

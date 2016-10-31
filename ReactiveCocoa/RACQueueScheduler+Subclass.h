@@ -1,4 +1,4 @@
-//
+//!
 //  RACQueueScheduler+Subclass.h
 //  ReactiveCocoa
 //

@@ -1,4 +1,4 @@
-//
+//!
 //  RACCommand.m
 //  ReactiveCocoa
 //
@@ -31,6 +31,7 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 	NSMutableArray *_activeExecutionSignals;
 
 	// Atomic backing variable for `allowsConcurrentExecution`.
+    // 默认0 即NO
 	volatile uint32_t _allowsConcurrentExecution;
 }
 
@@ -46,6 +47,7 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 @property (nonatomic, strong, readonly) RACSignal *immediateEnabled;
 
 // The signal block that the receiver was initialized with.
+// 初始化时候提供的signalBlock
 @property (nonatomic, copy, readonly) RACSignal * (^signalBlock)(id input);
 
 // Adds a signal to `activeExecutionSignals` and generates a KVO notification.
@@ -126,6 +128,8 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 	return [self initWithEnabled:nil signalBlock:signalBlock];
 }
 
+/// signalBlock在每次execute都会执行创建一个信号
+/// enabledSignal 用来指示命令是否可以执行 为nil的话 默认为return:@(YES)
 - (id)initWithEnabled:(RACSignal *)enabledSignal signalBlock:(RACSignal * (^)(id input))signalBlock {
 	NSCParameterAssert(signalBlock != nil);
 
@@ -174,10 +178,13 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 	_errors = [errorsConnection.signal setNameWithFormat:@"%@ -errors", self];
 	[errorsConnection connect];
 
+    // 活动信号数量大于0
 	RACSignal *immediateExecuting = [RACObserve(self, activeExecutionSignals) map:^(NSArray *activeSignals) {
 		return @(activeSignals.count > 0);
 	}];
 
+    // 命令是否正在执行 保存immediateExecuting最后发出的值
+    // replayLast中已经connect
 	_executing = [[[[[immediateExecuting
 		deliverOn:RACScheduler.mainThreadScheduler]
 		// This is useful before the first value arrives on the main thread.
@@ -186,24 +193,32 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 		replayLast]
 		setNameWithFormat:@"%@ -executing", self];
 
+    // 如果允许串行则YES 否则当前有活动信号则NO 否则YES
+    // RACObserve会立即发出当前值
 	RACSignal *moreExecutionsAllowed = [RACSignal
 		if:RACObserve(self, allowsConcurrentExecution)
 		then:[RACSignal return:@YES]
 		else:[immediateExecuting not]];
 	
+    
 	if (enabledSignal == nil) {
 		enabledSignal = [RACSignal return:@YES];
 	} else {
+        // startWith:@YES 未收到enabledSignal之前默认为NO
+        // replayLast保存最新的值
+        // 至少有个默认值YES
 		enabledSignal = [[[enabledSignal
 			startWith:@YES]
 			takeUntil:self.rac_willDeallocSignal]
 			replayLast];
 	}
 	
+    // enabledSignal & moreExecutionsAllowed 与
 	_immediateEnabled = [[RACSignal
 		combineLatest:@[ enabledSignal, moreExecutionsAllowed ]]
 		and];
 	
+    // 跟_immediateEnabled差别在deliverOn _enabled暴露在.h中
 	_enabled = [[[[[self.immediateEnabled
 		take:1]
 		concat:[[self.immediateEnabled skip:1] deliverOn:RACScheduler.mainThreadScheduler]]
@@ -215,10 +230,18 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 }
 
 #pragma mark Execution
-
+/// 执行命令 相当于创建一个信号并返回
+/// 如果不可用 返回[RACSignal error:error];
+/// 如果可用 调用signalBlock创建一个信号
+///    1.subscribeOn:RACScheduler.mainThreadScheduler
+///    2.multicast
+///    3.connect
+///    4.addActiveExecutionSignal
+/// 实际返回的是一个RACReplaySubject
 - (RACSignal *)execute:(id)input {
 	// `immediateEnabled` is guaranteed to send a value upon subscription, so
 	// -first is acceptable here.
+    // 这里线程不会被阻塞 因为immediateEnabled至少有一个值 无需等待
 	BOOL enabled = [[self.immediateEnabled first] boolValue];
 	if (!enabled) {
 		NSError *error = [NSError errorWithDomain:RACCommandErrorDomain code:RACCommandErrorNotEnabled userInfo:@{
@@ -243,6 +266,8 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 	
 	@weakify(self);
 
+    // activeExecutionSignalskVO触发 executing发出新值
+    // 如果不支持ConcurrentExecution immediateEnabled 也随之改变
 	[self addActiveExecutionSignal:connection.signal];
 	[connection.signal subscribeError:^(NSError *error) {
 		@strongify(self);
@@ -258,6 +283,7 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 
 #pragma mark NSKeyValueObserving
 
+/// 手动KVO
 + (BOOL)automaticallyNotifiesObserversForKey:(NSString *)key {
 	// Generate all KVO notifications manually to avoid the performance impact
 	// of unnecessary swizzling.

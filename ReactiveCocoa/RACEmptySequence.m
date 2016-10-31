@@ -1,4 +1,4 @@
-//
+//!
 //  RACEmptySequence.m
 //  ReactiveCocoa
 //
@@ -12,6 +12,7 @@
 
 #pragma mark Lifecycle
 
+/// 单例
 + (instancetype)empty {
 	static id singleton;
 	static dispatch_once_t pred;

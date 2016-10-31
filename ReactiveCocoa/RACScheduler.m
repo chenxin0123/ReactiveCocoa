@@ -92,6 +92,8 @@ NSString * const RACSchedulerCurrentSchedulerKey = @"RACSchedulerCurrentSchedule
 	return [NSOperationQueue.currentQueue isEqual:NSOperationQueue.mainQueue] || [NSThread isMainThread];
 }
 
+/// 从当前线程的threadDictionary中取key = RACSchedulerCurrentSchedulerKey
+/// 如果是主线程 且上一步为nil 则取mainThreadScheduler
 + (instancetype)currentScheduler {
 	RACScheduler *scheduler = NSThread.currentThread.threadDictionary[RACSchedulerCurrentSchedulerKey];
 	if (scheduler != nil) return scheduler;
@@ -121,6 +123,8 @@ NSString * const RACSchedulerCurrentSchedulerKey = @"RACSchedulerCurrentSchedule
 	return nil;
 }
 
+/// RACSequence的很多操作通过scheduleRecursiveBlock方法来实现
+/// subscribeForever
 - (RACDisposable *)scheduleRecursiveBlock:(RACSchedulerRecursiveBlock)recursiveBlock {
 	RACCompoundDisposable *disposable = [RACCompoundDisposable compoundDisposable];
 
@@ -135,12 +139,15 @@ NSString * const RACSchedulerCurrentSchedulerKey = @"RACSchedulerCurrentSchedule
 
 		__weak RACDisposable *weakSelfDisposable = selfDisposable;
 
+        //selfDisposable包含schedulingDisposable 因为scheldule中会判断schedulingDisposable 所以要把schedulingDisposable加入selfDisposable
 		RACDisposable *schedulingDisposable = [self schedule:^{
+            // 如果disposable.disposed 则不会执行这个block
 			@autoreleasepool {
 				// At this point, we've been invoked, so our disposable is now useless.
 				[disposable removeDisposable:weakSelfDisposable];
 			}
 
+            //递归的结束条件
 			if (disposable.disposed) return;
 
 			void (^reallyReschedule)(void) = ^{
@@ -162,31 +169,35 @@ NSString * const RACSchedulerCurrentSchedulerKey = @"RACSchedulerCurrentSchedule
 			// flattened).
 			__block BOOL rescheduleImmediately = NO;
 
+            
 			@autoreleasepool {
 				recursiveBlock(^{
-					[lock lock];
+					[lock lock];//l1
 					BOOL immediate = rescheduleImmediately;
 					if (!immediate) ++rescheduleCount;
 					[lock unlock];
 
-					if (immediate) reallyReschedule();
+					if (immediate) reallyReschedule();//a
 				});
 			}
 
-			[lock lock];
+			[lock lock];//l2
 			NSUInteger synchronousCount = rescheduleCount;
 			rescheduleImmediately = YES;
 			[lock unlock];
 
 			for (NSUInteger i = 0; i < synchronousCount; i++) {
-				reallyReschedule();
+				reallyReschedule();//b
 			}
+            // a b 两处只有一个地方会执行到
 		}];
 
 		[selfDisposable addDisposable:schedulingDisposable];
 	}
 }
 
+/// 确保在block执行+[RACScheduler currentScheduler]正常
+/// 只有RACTargetQueueScheduler会调用这个方法
 - (void)performAsCurrentScheduler:(void (^)(void))block {
 	NSCParameterAssert(block != NULL);
 

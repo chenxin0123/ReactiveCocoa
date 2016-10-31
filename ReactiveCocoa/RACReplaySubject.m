@@ -1,4 +1,4 @@
-//
+//!
 //  RACReplaySubject.m
 //  ReactiveCocoa
 //
@@ -21,6 +21,9 @@ const NSUInteger RACReplaySubjectUnlimitedCapacity = NSUIntegerMax;
 
 // These properties should only be modified while synchronized on self.
 @property (nonatomic, strong, readonly) NSMutableArray *valuesReceived;
+
+/// 表示收到过complete或者error
+
 @property (nonatomic, assign) BOOL hasCompleted;
 @property (nonatomic, assign) BOOL hasError;
 @property (nonatomic, strong) NSError *error;
@@ -52,6 +55,8 @@ const NSUInteger RACReplaySubjectUnlimitedCapacity = NSUIntegerMax;
 
 #pragma mark RACSignal
 
+/// 先把收到过的值向subscriber发一遍 然后调用父类方法 以便接收以后的值
+/// 在subscriptionScheduler中发送
 - (RACDisposable *)subscribe:(id<RACSubscriber>)subscriber {
 	RACCompoundDisposable *compoundDisposable = [RACCompoundDisposable compoundDisposable];
 
@@ -82,6 +87,9 @@ const NSUInteger RACReplaySubjectUnlimitedCapacity = NSUIntegerMax;
 }
 
 #pragma mark RACSubscriber
+
+/// 先保存值 然后再调用父类方法发送给订阅者
+/// 若容量capacity满了 则移除最早的值
 
 - (void)sendNext:(id)value {
 	@synchronized (self) {

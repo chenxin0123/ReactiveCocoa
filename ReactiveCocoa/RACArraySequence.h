@@ -1,4 +1,4 @@
-//
+//!
 //  RACArraySequence.h
 //  ReactiveCocoa
 //

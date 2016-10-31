@@ -1,4 +1,4 @@
-//
+//!
 //  RACTupleSequence.h
 //  ReactiveCocoa
 //

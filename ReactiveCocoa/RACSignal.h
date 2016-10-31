@@ -1,4 +1,4 @@
-//
+//!
 //  RACSignal.h
 //  ReactiveCocoa
 //
@@ -44,12 +44,14 @@
 /// subscribes. Any side effects within the block will thus execute once for each
 /// subscription, not necessarily on one thread, and possibly even
 /// simultaneously!
+/// 创建一个信号 返回RACDynamicSignal
 + (RACSignal *)createSignal:(RACDisposable * (^)(id<RACSubscriber> subscriber))didSubscribe;
 
 /// Returns a signal that immediately sends the given error.
 + (RACSignal *)error:(NSError *)error;
 
 /// Returns a signal that never completes.
+/// never sends anything
 + (RACSignal *)never;
 
 /// Immediately schedules the given block on the given scheduler. The block is

@@ -1,4 +1,4 @@
-//
+//!
 //  RACErrorSignal.h
 //  ReactiveCocoa
 //
@@ -10,6 +10,7 @@
 
 // A private `RACSignal` subclasses that synchronously sends an error to any
 // subscribers.
+// 直接发送error给订阅者
 @interface RACErrorSignal : RACSignal
 
 + (RACSignal *)error:(NSError *)error;

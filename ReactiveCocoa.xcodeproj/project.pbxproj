@@ -436,6 +436,7 @@
 		7A70657D1A3F88B8001E8354 /* RACKVOProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RACKVOProxy.h; sourceTree = "<group>"; };
 		7A70657E1A3F88B8001E8354 /* RACKVOProxy.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RACKVOProxy.m; sourceTree = "<group>"; };
 		7A7065831A3F8967001E8354 /* RACKVOProxySpec.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RACKVOProxySpec.m; sourceTree = "<group>"; };
+		90AB7F921DD1CEAB0000C229 /* ReactiveCocoa v2.5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "ReactiveCocoa v2.5.png"; sourceTree = "<group>"; };
 		D037642A19EDA41200A782A9 /* NSArray+RACSequenceAdditions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSArray+RACSequenceAdditions.h"; sourceTree = "<group>"; };
 		D037642B19EDA41200A782A9 /* NSArray+RACSequenceAdditions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSArray+RACSequenceAdditions.m"; sourceTree = "<group>"; };
 		D037642C19EDA41200A782A9 /* NSControl+RACCommandSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSControl+RACCommandSupport.h"; sourceTree = "<group>"; };
@@ -1053,6 +1054,7 @@
 		D04725EC19E49ED7006002AA /* ReactiveCocoa */ = {
 			isa = PBXGroup;
 			children = (
+				90AB7F921DD1CEAB0000C229 /* ReactiveCocoa v2.5.png */,
 				D04725EF19E49ED7006002AA /* ReactiveCocoa.h */,
 				D037642919EDA3B600A782A9 /* Objective-C */,
 				D04725ED19E49ED7006002AA /* Supporting Files */,

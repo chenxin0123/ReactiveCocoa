@@ -1,4 +1,4 @@
-//
+//!
 //  RACDynamicSequence.m
 //  ReactiveCocoa
 //
@@ -14,6 +14,7 @@
 //
 // This avoids stack overflows when deallocating long chains of dynamic
 // sequences.
+// 防止栈爆
 #define DEALLOC_OVERFLOW_GUARD 100
 
 @interface RACDynamicSequence () {
@@ -54,6 +55,7 @@
 //  - If NO, this block is of type `id (^)(void)`.
 //
 // This property should only be accessed while synchronized on self.
+// _head = headBlock 只会被调用一次 调用只会会被设为nil
 @property (nonatomic, strong) id headBlock;
 
 // A block used to evaluate tail. This should be set to nil after `_tail` has been
@@ -68,11 +70,13 @@
 //  - If NO, this block is of type `RACSequence * (^)(void)`.
 //
 // This property should only be accessed while synchronized on self.
+// _tail = tailBlock 只会被调用一次 调用只会会被设为nil
 @property (nonatomic, strong) id tailBlock;
 
 // Whether the receiver was initialized with a `dependencyBlock`.
 //
 // This property should only be accessed while synchronized on self.
+// headBlock以及tailBlock是否有参数
 @property (nonatomic, assign) BOOL hasDependency;
 
 // A dependency which must be evaluated before `headBlock` and `tailBlock`. This
@@ -83,6 +87,7 @@
 // copying bug. See https://github.com/ReactiveCocoa/ReactiveCocoa/pull/506.
 //
 // This property should only be accessed while synchronized on self.
+// 执行结果作为 headBlock以及tailBlock的参数 但是只会被调用一次 调用只会会被设为nil
 @property (nonatomic, strong) id (^dependencyBlock)(void);
 
 @end
@@ -91,6 +96,7 @@
 
 #pragma mark Lifecycle
 
+/// 默认hasDependency = NO
 + (RACSequence *)sequenceWithHeadBlock:(id (^)(void))headBlock tailBlock:(RACSequence *(^)(void))tailBlock {
 	NSCParameterAssert(headBlock != nil);
 
@@ -101,6 +107,7 @@
 	return seq;
 }
 
+/// seq.hasDependency = YES;
 + (RACSequence *)sequenceWithLazyDependency:(id (^)(void))dependencyBlock headBlock:(id (^)(id dependency))headBlock tailBlock:(RACSequence *(^)(id dependency))tailBlock {
 	NSCParameterAssert(dependencyBlock != nil);
 	NSCParameterAssert(headBlock != nil);
@@ -113,6 +120,8 @@
 	return seq;
 }
 
+/// _tail = nil 在dealloc返回之前调用了 _tail的dealloc 。。。 如果序列很长 就导致太多函数调用压栈 然后栈爆
+/// 所以当嵌套层数达到DEALLOC_OVERFLOW_GUARD后 将_tail放入自动释放池 终止递归
 - (void)dealloc {
 	static volatile int32_t directDeallocCount = 0;
 
@@ -123,12 +132,12 @@
 		// recursing.
 		__autoreleasing RACSequence *tail __attribute__((unused)) = _tail;
 	}
-	
 	_tail = nil;
 }
 
 #pragma mark RACSequence
 
+/// dependencyBlock只会被执行一次
 - (id)head {
 	@synchronized (self) {
 		id untypedHeadBlock = self.headBlock;

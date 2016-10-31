@@ -35,9 +35,11 @@ typedef void (^RACSchedulerRecursiveBlock)(void (^reschedule)(void));
 /// **Note:** Unlike most other schedulers, this does not set the current
 /// scheduler. There may still be a valid +currentScheduler if this is used
 /// within a block scheduled on a different scheduler.
+/// RACImmediateScheduler单例
 + (RACScheduler *)immediateScheduler;
 
-/// A singleton scheduler that executes blocks in the main thread.
+/// A singleton scheduler that executes blocks in tsubscriptionSchedulerhe main thread.
+/// RACTargetQueueScheduler单例
 + (RACScheduler *)mainThreadScheduler;
 
 /// Creates and returns a new background scheduler with the given priority and
@@ -45,17 +47,19 @@ typedef void (^RACSchedulerRecursiveBlock)(void (^reschedule)(void));
 ///
 /// Scheduler creation is cheap. It's unnecessary to save the result of this
 /// method call unless you want to serialize some actions on the same background
-/// scheduler.
+/// scheduler. RACTargetQueueScheduler
 + (RACScheduler *)schedulerWithPriority:(RACSchedulerPriority)priority name:(NSString *)name;
 
-/// Invokes +schedulerWithPriority:name: with a default name.
+/// Invokes +schedulerWithPriority:name: with a default name. RACTargetQueueScheduler
 + (RACScheduler *)schedulerWithPriority:(RACSchedulerPriority)priority;
 
 /// Invokes +schedulerWithPriority: with RACSchedulerPriorityDefault.
+/// RACTargetQueueScheduler RACSchedulerPriorityDefault
 + (RACScheduler *)scheduler;
 
 /// The current scheduler. This will only be valid when used from within a
 /// -[RACScheduler schedule:] block or when on the main thread.
+/// 只有当在主线程或者[RACScheduler schedule:]中调用才会有有效返回值
 + (RACScheduler *)currentScheduler;
 
 /// Schedule the given block for execution on the scheduler.
@@ -137,6 +141,7 @@ typedef void (^RACSchedulerRecursiveBlock)(void (^reschedule)(void));
 /// Returns a disposable which can be used to cancel the scheduled block before
 /// it begins executing, or to stop it from rescheduling if it's already begun
 /// execution.
+/// recursiveBlock
 - (RACDisposable *)scheduleRecursiveBlock:(RACSchedulerRecursiveBlock)recursiveBlock;
 
 @end

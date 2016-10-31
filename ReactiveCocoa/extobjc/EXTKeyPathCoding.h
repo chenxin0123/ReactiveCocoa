@@ -35,12 +35,25 @@ NSString *lowercaseStringPath = @keypath(NSString.new, lowercaseString);
  * refactoring, such that changing the name of the property will also update any
  * uses of \@keypath.
  */
+
+// keypath(str.lowercaseString.UTF8String)
+// => metamacro_if_eq0_0(keypath1(__VA_ARGS__))(keypath2(__VA_ARGS__))
+// => keypath1(__VA_ARGS__)metamacro_consume_(keypath2(__VA_ARGS__))
+// => keypath1(__VA_ARGS__)
+
+// keypath(OBJ, PATH)
+// => metamacro_if_eq0_1(keypath1(__VA_ARGS__))(keypath2(__VA_ARGS__))
+// => metamacro_expand_(keypath2(__VA_ARGS__))
+// => keypath2(__VA_ARGS__)
+
 #define keypath(...) \
     metamacro_if_eq(1, metamacro_argcount(__VA_ARGS__))(keypath1(__VA_ARGS__))(keypath2(__VA_ARGS__))
 
+// keypath1(str.lowercaseString.UTF8String) strchr("str.lowercaseString.UTF8String",'.') + 1
 #define keypath1(PATH) \
     (((void)(NO && ((void)PATH, NO)), strchr(# PATH, '.') + 1))
 
+//keypath2(OBJ, PATH) => PATH
 #define keypath2(OBJ, PATH) \
     (((void)(NO && ((void)OBJ.PATH, NO)), # PATH))
 

@@ -1,4 +1,4 @@
-//
+//!
 //  RACErrorSignal.m
 //  ReactiveCocoa
 //

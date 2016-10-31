@@ -1,4 +1,4 @@
-//
+//!
 //  RACDynamicSignal.m
 //  ReactiveCocoa
 //
@@ -36,18 +36,22 @@
 - (RACDisposable *)subscribe:(id<RACSubscriber>)subscriber {
 	NSCParameterAssert(subscriber != nil);
 
+    
 	RACCompoundDisposable *disposable = [RACCompoundDisposable compoundDisposable];
+    //RACPassthroughSubscriber 将subscriber、disposable、signal三者关联起来
 	subscriber = [[RACPassthroughSubscriber alloc] initWithSubscriber:subscriber signal:self disposable:disposable];
 
 	if (self.didSubscribe != NULL) {
+        // 如果schedulingDisposable被提前disposed Schedulerblock就不会执行
 		RACDisposable *schedulingDisposable = [RACScheduler.subscriptionScheduler schedule:^{
+            /// innerDisposable做一些清理工作
 			RACDisposable *innerDisposable = self.didSubscribe(subscriber);
 			[disposable addDisposable:innerDisposable];
 		}];
 
 		[disposable addDisposable:schedulingDisposable];
 	}
-	
+    
 	return disposable;
 }
 

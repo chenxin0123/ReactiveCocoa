@@ -1,4 +1,4 @@
-//
+//!
 //  RACScopedDisposable.m
 //  ReactiveCocoa
 //

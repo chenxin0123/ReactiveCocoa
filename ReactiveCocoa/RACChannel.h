@@ -1,4 +1,4 @@
-//
+//!
 //  RACChannel.h
 //  ReactiveCocoa
 //
@@ -29,6 +29,7 @@
 /// on the `followingTerminal`, and received in the model from the
 /// `leadingTerminal`. However, the initial value of the view is not received
 /// from the `leadingTerminal` (only future changes).
+/// 可以看做两个信号的双向连接 或者说双向绑定
 @interface RACChannel : NSObject
 
 /// The terminal which "leads" the channel, by sending its latest value
@@ -36,6 +37,8 @@
 ///
 /// New subscribers to this terminal will not receive a starting value, but will
 /// receive all future values that are sent to the `followingTerminal`.
+/// 将最新的值发给followingTerminal的订阅者
+/// 订阅者将收到来自followingTerminal的值
 @property (nonatomic, strong, readonly) RACChannelTerminal *leadingTerminal;
 
 /// The terminal which "follows" the lead of the other terminal, only sending
@@ -63,6 +66,10 @@
 /// terminals.
 ///
 /// Do not instantiate this class directly. Create a RACChannel instead.
+/// 表示管道的一端
+/// 一个RACChannelTerminal 既可以是订阅者也是信号
+/// 收到的值不会发给自己的订阅者 而是发给其他端的订阅者
+/// error complete 会被发给所有终端订阅者
 @interface RACChannelTerminal : RACSignal <RACSubscriber>
 
 - (id)init __attribute__((unavailable("Instantiate a RACChannel instead")));

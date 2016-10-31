@@ -1,4 +1,4 @@
-//
+//!
 //  RACBlockTrampoline.h
 //  ReactiveCocoa
 //
@@ -25,6 +25,7 @@
 //             be passed as nils.
 //
 // Returns the return value of invoking the block.
+/// 调用block 参数个数可变 最多15个
 + (id)invokeBlock:(id)block withArguments:(RACTuple *)arguments;
 
 @end

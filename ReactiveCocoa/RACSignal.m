@@ -1,4 +1,4 @@
-//
+//!
 //  RACSignal.m
 //  ReactiveCocoa
 //
@@ -40,6 +40,8 @@
 	}] setNameWithFormat:@"+never"];
 }
 
+/// 用startLazilyWithScheduler。。。创建一个新的信号 然后publish 再connect
+/// 原始信号立即就被订阅
 + (RACSignal *)startEagerlyWithScheduler:(RACScheduler *)scheduler block:(void (^)(id<RACSubscriber> subscriber))block {
 	NSCParameterAssert(scheduler != nil);
 	NSCParameterAssert(block != NULL);
@@ -50,6 +52,11 @@
 	return [signal setNameWithFormat:@"+startEagerlyWithScheduler: %@ block:", scheduler];
 }
 
+/// 将block作为didSubscribe创建一个信号 然后multicast:RACReplaySubject返回一个RACMulticastConnection
+/// 返回一个新的信号 这个信号subscribeOn:scheduler且didsubscribe中订阅connection
+/// block只会被执行一次
+/// 返回的信号没有disposable 所以block中要有sendError或者sendComplete
+/// 原始信号在新信号第一次被订阅的时候订阅
 + (RACSignal *)startLazilyWithScheduler:(RACScheduler *)scheduler block:(void (^)(id<RACSubscriber> subscriber))block {
 	NSCParameterAssert(scheduler != nil);
 	NSCParameterAssert(block != NULL);
@@ -89,6 +96,10 @@
 	return [RACReturnSignal return:value];
 }
 
+/// 返回一个新信号R R的订阅过程中将订阅原始信号O
+/// 抓取原始信号O的每个next值 用该值通过bindingBlock生成一个新的信号N
+/// 将信号N发送的next值发给R订阅者
+RACReturnSignal 来实现
 - (RACSignal *)bind:(RACStreamBindBlock (^)(void))block {
 	NSCParameterAssert(block != NULL);
 
@@ -111,6 +122,9 @@
 
 		RACCompoundDisposable *compoundDisposable = [RACCompoundDisposable compoundDisposable];
 
+        // 直到signals耗尽才真正结束
+        // 所以next产生的信号不一定会触发compoundDisposable 因为self也在signals中
+        // 当selfcomplete后 next产生的信号才有可能结束所有信号
 		void (^completeSignal)(RACSignal *, RACDisposable *) = ^(RACSignal *signal, RACDisposable *finishedDisposable) {
 			BOOL removeDisposable = NO;
 
@@ -161,9 +175,11 @@
 				BOOL stop = NO;
 				id signal = bindingBlock(x, &stop);
 
+                // stop 或者 返回nil 结束
 				@autoreleasepool {
 					if (signal != nil) addSignal(signal);
 					if (signal == nil || stop) {
+                        // 结束bind的订阅
 						[selfDisposable dispose];
 						completeSignal(self, selfDisposable);
 					}
@@ -184,6 +200,7 @@
 	}] setNameWithFormat:@"[%@] -bind:", self.name];
 }
 
+/// 串联两个信号 一个信号complete另一个信号开始
 - (RACSignal *)concat:(RACSignal *)signal {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		RACSerialDisposable *serialDisposable = [[RACSerialDisposable alloc] init];
@@ -202,16 +219,23 @@
 	}] setNameWithFormat:@"[%@] -concat: %@", self.name, signal];
 }
 
+/// 合并两个信号为RACTuple 期间每个信号发送的值会被保存在各自的一个数组中
+/// 每次有值到来则会检查各自的数组中是否都有值 是的话发送一个RACTuple
+/// 值一个发送出去就从数组中移除
+/// @see combineLast
 - (RACSignal *)zipWith:(RACSignal *)signal {
 	NSCParameterAssert(signal != nil);
 
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
+        
+        /// 一个信号到来不会发送 会等带下一个信号到来的时候一起发送 值为RACTuple
 		__block BOOL selfCompleted = NO;
 		NSMutableArray *selfValues = [NSMutableArray array];
 
 		__block BOOL otherCompleted = NO;
 		NSMutableArray *otherValues = [NSMutableArray array];
 
+        // 一方耗尽且结束 就结束 但是一方结束的时候 它的值可能很多 并不一定会马上结束
 		void (^sendCompletedIfNecessary)(void) = ^{
 			@synchronized (selfValues) {
 				BOOL selfEmpty = (selfCompleted && selfValues.count == 0);
@@ -220,6 +244,7 @@
 			}
 		};
 
+        // 一方耗尽则不发送 等待下一次机会
 		void (^sendNext)(void) = ^{
 			@synchronized (selfValues) {
 				if (selfValues.count == 0) return;
@@ -236,6 +261,7 @@
 
 		RACDisposable *selfDisposable = [self subscribeNext:^(id x) {
 			@synchronized (selfValues) {
+                // 将值保存起来
 				[selfValues addObject:x ?: RACTupleNil.tupleNil];
 				sendNext();
 			}

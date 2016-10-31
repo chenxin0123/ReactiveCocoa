@@ -1,4 +1,4 @@
-//
+//!
 //  RACCompoundDisposable.m
 //  ReactiveCocoa
 //

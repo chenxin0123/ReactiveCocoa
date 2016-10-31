@@ -1,4 +1,4 @@
-//
+//!
 //  RACReturnSignal.h
 //  ReactiveCocoa
 //
@@ -10,6 +10,7 @@
 
 // A private `RACSignal` subclasses that synchronously sends a value to any
 // subscribers, then completes.
+// [subscriber sendNext:self.value]; [subscriber sendCompleted];
 @interface RACReturnSignal : RACSignal
 
 + (RACSignal *)return:(id)value;

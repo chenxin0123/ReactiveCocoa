@@ -1,4 +1,4 @@
-//
+//!
 //  RACMulticastConnection+Private.h
 //  ReactiveCocoa
 //

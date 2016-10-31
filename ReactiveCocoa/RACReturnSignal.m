@@ -1,4 +1,4 @@
-//
+//!
 //  RACReturnSignal.m
 //  ReactiveCocoa
 //

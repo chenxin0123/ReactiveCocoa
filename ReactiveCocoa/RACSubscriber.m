@@ -1,4 +1,4 @@
-//
+//!
 //  RACSubscriber.m
 //  ReactiveCocoa
 //
@@ -93,6 +93,8 @@
 	}
 }
 
+/// 将otherDisposable放入self.disposable
+/// 之所以要放入self.disposable 是因为一旦某个信号sendCompleted或者sendError 则要终结所有其他的订阅
 - (void)didSubscribeWithDisposable:(RACCompoundDisposable *)otherDisposable {
 	if (otherDisposable.disposed) return;
 
@@ -103,6 +105,7 @@
 
 	// If this subscription terminates, purge its disposable to avoid unbounded
 	// memory growth.
+    // 一个订阅者可以订阅多个信号 如果otherDisposable被disposed 则将其从selfDisposable移除
 	[otherDisposable addDisposable:[RACDisposable disposableWithBlock:^{
 		@strongify(otherDisposable);
 		[selfDisposable removeDisposable:otherDisposable];

@@ -1,4 +1,4 @@
-//
+//!
 //  RACQueueScheduler.h
 //  ReactiveCocoa
 //
@@ -14,5 +14,6 @@
 /// Because RACQueueScheduler is abstract, it should not be instantiated
 /// directly. Create a subclass using the `RACQueueScheduler+Subclass.h`
 /// interface and use that instead.
+/// 抽象类 使用子类RACTargetQueueScheduler
 @interface RACQueueScheduler : RACScheduler
 @end

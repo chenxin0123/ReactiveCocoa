@@ -1,4 +1,4 @@
-//
+//!
 //  RACCompoundDisposable.h
 //  ReactiveCocoa
 //
@@ -15,6 +15,8 @@
 /// of, the given disposable is immediately disposed. This allows a compound
 /// disposable to act as a stand-in for a disposable that will be delivered
 /// asynchronously.
+/// 组合模式
+/// 如果已经是disposed 则新加的disposable会被立即dispose
 @interface RACCompoundDisposable : RACDisposable
 
 /// Creates and returns a new compound disposable.

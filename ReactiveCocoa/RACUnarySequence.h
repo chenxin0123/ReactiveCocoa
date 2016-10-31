@@ -1,4 +1,4 @@
-//
+//!
 //  RACUnarySequence.h
 //  ReactiveCocoa
 //
@@ -9,6 +9,7 @@
 #import "RACSequence.h"
 
 // Private class representing a sequence of exactly one value.
+// 只包含一个值 return:返回本类实例 对应RACReturnSignal
 @interface RACUnarySequence : RACSequence
 
 @end

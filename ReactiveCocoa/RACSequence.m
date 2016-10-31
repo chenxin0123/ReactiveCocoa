@@ -1,4 +1,4 @@
-//
+//!
 //  RACSequence.m
 //  ReactiveCocoa
 //
@@ -42,6 +42,7 @@
 
 @implementation RACSequenceEnumerator
 
+/// NSFastEnumeration
 - (id)nextObject {
 	id object = nil;
 	
@@ -77,19 +78,26 @@
 
 #pragma mark RACStream
 
+/// head tail 都是nil
 + (instancetype)empty {
 	return RACEmptySequence.empty;
 }
 
+/// RACUnarySequence只含一个值 tail为nil
 + (instancetype)return:(id)value {
 	return [RACUnarySequence return:value];
 }
 
+/// RACSignal是将一个信号的每个值转换为一个新的信号
+/// 这里是将序列的每个值转为一个新的序列
 - (instancetype)bind:(RACStreamBindBlock (^)(void))block {
 	RACStreamBindBlock bindBlock = block();
 	return [[self bind:bindBlock passingThroughValuesFromSequence:nil] setNameWithFormat:@"[%@] -bind:", self.name];
 }
 
+/// RACSequence的bind基于此实现
+/// 返回RACDynamicSequence
+/// 返回的序列 bindBlock(self.head).head0 bindBlock(self.head).head1 bindBlock(self.head).head1 。。。bindBlock(self.tail.head).head0
 - (instancetype)bind:(RACStreamBindBlock)bindBlock passingThroughValuesFromSequence:(RACSequence *)passthroughSequence {
 	// Store values calculated in the dependency here instead, avoiding any kind
 	// of temporary collection and boxing.
@@ -102,6 +110,10 @@
 	__block BOOL stop = NO;
 
 	RACSequence *sequence = [RACDynamicSequence sequenceWithLazyDependency:^ id {
+        
+        // 如果current.head有值则不进入循环
+        // 否则进入循环 读取原始序列的值生成一个新的序列作为current
+        // 原始序列耗尽或者bindBlock未返回一个序列 则停止
 		while (current.head == nil) {
 			if (stop) return nil;
 
@@ -130,7 +142,6 @@
 		return current.head;
 	} tailBlock:^ id (id _) {
 		if (stop) return nil;
-
 		return [valuesSeq bind:bindBlock passingThroughValuesFromSequence:current.tail];
 	}];
 
@@ -138,6 +149,7 @@
 	return sequence;
 }
 
+/// 123 abc -> 123abc
 - (instancetype)concat:(RACStream *)stream {
 	NSCParameterAssert(stream != nil);
 
@@ -146,6 +158,8 @@
 		setNameWithFormat:@"[%@] -concat: %@", self.name, stream];
 }
 
+/// 两个序列的值合并为元组
+/// 123 abcd (1a)(2b)(3c)d被丢弃
 - (instancetype)zipWith:(RACSequence *)sequence {
 	NSCParameterAssert(sequence != nil);
 
@@ -164,6 +178,7 @@
 
 #pragma mark Extended methods
 
+/// 实现- (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(__unsafe_unretained id *)stackbuf count:(NSUInteger)len
 - (NSArray *)array {
 	NSMutableArray *array = [NSMutableArray array];
 	for (id obj in self) {
@@ -183,24 +198,28 @@
 	return [[self signalWithScheduler:[RACScheduler scheduler]] setNameWithFormat:@"[%@] -signal", self.name];
 }
 
+/// 从头到尾发送值给订阅者
 - (RACSignal *)signalWithScheduler:(RACScheduler *)scheduler {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		__block RACSequence *sequence = self;
-
+        // 递归遍历 sendNext
 		return [scheduler scheduleRecursiveBlock:^(void (^reschedule)(void)) {
 			if (sequence.head == nil) {
+                // 结束递归
 				[subscriber sendCompleted];
 				return;
 			}
 
 			[subscriber sendNext:sequence.head];
 
+            // 准备下一次调度
 			sequence = sequence.tail;
 			reschedule();
 		}];
 	}] setNameWithFormat:@"[%@] -signalWithScheduler: %@", self.name, scheduler];
 }
 
+/// [1,2,3] -> reduce(reduce(reduce(start, 1), 2), 3)
 - (id)foldLeftWithStart:(id)start reduce:(id (^)(id, id))reduce {
 	NSCParameterAssert(reduce != NULL);
 
@@ -213,6 +232,7 @@
 	return start;
 }
 
+/// [1,2,3] -> reduce(1, reduce(2, reduce(3, start)))
 - (id)foldRightWithStart:(id)start reduce:(id (^)(id, RACSequence *))reduce {
 	NSCParameterAssert(reduce != NULL);
 
@@ -225,12 +245,14 @@
 	return reduce(self.head, rest);
 }
 
+/// 任意一个值 passtest 则返回yes
 - (BOOL)any:(BOOL (^)(id))block {
 	NSCParameterAssert(block != NULL);
 
 	return [self objectPassingTest:block] != nil;
 }
 
+/// 全部的值都 passtest
 - (BOOL)all:(BOOL (^)(id))block {
 	NSCParameterAssert(block != NULL);
 	
@@ -241,6 +263,7 @@
 	return result.boolValue;
 }
 
+/// 第一个passtest的值
 - (id)objectPassingTest:(BOOL (^)(id))block {
 	NSCParameterAssert(block != NULL);
 
@@ -280,7 +303,9 @@
 }
 
 #pragma mark NSFastEnumeration
-
+/// 关于这个方法的详情 看下面两个博客就够了
+/// https://www.bignerdranch.com/blog/fast-enumeration-part-2/
+/// http://www.cocoawithlove.com/2008/05/implementing-countbyenumeratingwithstat.html
 - (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(__unsafe_unretained id *)stackbuf count:(NSUInteger)len {
 	if (state->state == ULONG_MAX) {
 		// Enumeration has completed.

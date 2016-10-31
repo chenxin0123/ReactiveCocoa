@@ -1,4 +1,4 @@
-//
+//!
 //  RACScheduler+Private.h
 //  ReactiveCocoa
 //
@@ -22,6 +22,7 @@ extern NSString * const RACSchedulerCurrentSchedulerKey;
 // To fulfill those two, if we already have a valid +currentScheduler, it
 // immediately executes scheduled blocks. If we don't, it will execute scheduled
 // blocks with a private background scheduler.
+// RACSubscriptionScheduler实例
 + (instancetype)subscriptionScheduler;
 
 // Initializes the receiver with the given name.

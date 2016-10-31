@@ -1,4 +1,4 @@
-//
+//!
 //  RACReplaySubject.h
 //  ReactiveCocoa
 //
@@ -13,6 +13,8 @@ extern const NSUInteger RACReplaySubjectUnlimitedCapacity;
 /// A replay subject saves the values it is sent (up to its defined capacity)
 /// and resends those to new subscribers. It will also replay an error or
 /// completion.
+/// 将收到过的值保存起来 如果有新的订阅则重发这些值 包括error和complete
+/// capacity指定保存的next值的个数上限
 @interface RACReplaySubject : RACSubject
 
 /// Creates a new replay subject with the given capacity. A capacity of

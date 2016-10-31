@@ -1,4 +1,4 @@
-//
+//!
 //  RACSubscriber.h
 //  ReactiveCocoa
 //
@@ -46,6 +46,7 @@
 /// A subscriber may receive multiple disposables if it gets subscribed to
 /// multiple signals; however, any error or completed events must terminate _all_
 /// subscriptions.
+/// 一个订阅者可以订阅多个信号 但是一旦其中一个信号结束或者出错 所有订阅都将终止
 - (void)didSubscribeWithDisposable:(RACCompoundDisposable *)disposable;
 
 @end

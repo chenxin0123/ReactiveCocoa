@@ -1,4 +1,4 @@
-//
+//!
 //  RACScheduler.m
 //  ReactiveCocoa
 //
@@ -24,6 +24,7 @@
 /// scheduled blocks.
 ///
 /// block - The block to execute. Cannot be NULL.
+/// 确保在block执行+[RACScheduler currentScheduler]正常
 - (void)performAsCurrentScheduler:(void (^)(void))block;
 
 @end

@@ -1,4 +1,4 @@
-//
+//!
 //  RACSignal+Operations.h
 //  ReactiveCocoa
 //

@@ -1,4 +1,4 @@
-//
+//!
 //  RACChannel.m
 //  ReactiveCocoa
 //
@@ -35,6 +35,7 @@
 	RACReplaySubject *followingSubject = [[RACReplaySubject replaySubjectWithCapacity:1] setNameWithFormat:@"followingSubject"];
 
 	// Propagate errors and completion to everything.
+    // 互相订阅 一端结束 所有端都结束
 	[[leadingSubject ignoreValues] subscribe:followingSubject];
 	[[followingSubject ignoreValues] subscribe:leadingSubject];
 
@@ -64,13 +65,14 @@
 }
 
 #pragma mark RACSignal
-
+/// 订阅实际上是订阅values
 - (RACDisposable *)subscribe:(id<RACSubscriber>)subscriber {
 	return [self.values subscribe:subscriber];
 }
 
 #pragma mark <RACSubscriber>
 
+/// 把收到的值都发给otherTerminal
 - (void)sendNext:(id)value {
 	[self.otherTerminal sendNext:value];
 }
@@ -83,6 +85,7 @@
 	[self.otherTerminal sendCompleted];
 }
 
+/// 一旦订阅的信号error或者complete 结束otherTerminal对所有信号的订阅
 - (void)didSubscribeWithDisposable:(RACCompoundDisposable *)disposable {
 	[self.otherTerminal didSubscribeWithDisposable:disposable];
 }

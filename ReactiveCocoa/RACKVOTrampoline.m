@@ -1,4 +1,4 @@
-//
+//!
 //  RACKVOTrampoline.m
 //  ReactiveCocoa
 //
@@ -25,10 +25,14 @@
 
 @end
 
+/// 封装了一次KVO的target observer keyPath 以及回调block
+/// RACKVOTrampoline是RACDisposable的子类
 @implementation RACKVOTrampoline
 
 #pragma mark Lifecycle
 
+
+/// 将自己加入 target以及observer的rac_deallocDisposable中 任意一个释放 结束此次KVO
 - (id)initWithTarget:(__weak NSObject *)target observer:(__weak NSObject *)observer keyPath:(NSString *)keyPath options:(NSKeyValueObservingOptions)options block:(RACKVOBlock)block {
 	NSCParameterAssert(keyPath != nil);
 	NSCParameterAssert(block != nil);
@@ -86,6 +90,7 @@
 	[RACKVOProxy.sharedProxy removeObserver:self forContext:(__bridge void *)self];
 }
 
+/// RACKVOProxy.sharedProxy会将收到的信息转发到这里来
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
 	if (context != (__bridge void *)self) {
 		[super observeValueForKeyPath:keyPath ofObject:object change:change context:context];

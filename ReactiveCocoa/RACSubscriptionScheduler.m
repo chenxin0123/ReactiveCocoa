@@ -1,4 +1,4 @@
-//
+//!
 //  RACSubscriptionScheduler.m
 //  ReactiveCocoa
 //
@@ -24,17 +24,25 @@
 - (id)init {
 	self = [super initWithName:@"com.ReactiveCocoa.RACScheduler.subscriptionScheduler"];
 	if (self == nil) return nil;
-
+    //RACTargetQueueScheduler
 	_backgroundScheduler = [RACScheduler scheduler];
 
 	return self;
 }
 
 #pragma mark RACScheduler
-
+/// 主线程 或者当前线程有scheduler 则直接执行 否则在backgroundScheduler中执行
 - (RACDisposable *)schedule:(void (^)(void))block {
 	NSCParameterAssert(block != NULL);
 
+    // 一种情况
+    // 1. diliverOn会返回一个新的信号 这个信号会在这里进行订阅diliverOn的原信号
+    // 2. 原信号的didSubscribe又会在这里中执行
+    // 1中如果currentScheduler == nil 则会在backgroundScheduler中执行
+    // 这时再执行2则currentScheduler non-nil 所以直接执行了
+    
+    // 这样保证了1 订阅过程不阻塞主线程 2 在1的基础上尽快执行
+    
 	if (RACScheduler.currentScheduler == nil) return [self.backgroundScheduler schedule:block];
 
 	block();

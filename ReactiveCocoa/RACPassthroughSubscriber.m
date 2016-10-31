@@ -1,4 +1,4 @@
-//
+//!
 //  RACPassthroughSubscriber.m
 //  ReactiveCocoa
 //
@@ -48,6 +48,7 @@ static const char *cleanedSignalDescription(RACSignal *signal) {
 
 #pragma mark Lifecycle
 
+/// disposable中包含RACDynamicSignal的didSubscribe返回的block
 - (instancetype)initWithSubscriber:(id<RACSubscriber>)subscriber signal:(RACSignal *)signal disposable:(RACCompoundDisposable *)disposable {
 	NSCParameterAssert(subscriber != nil);
 
@@ -57,12 +58,14 @@ static const char *cleanedSignalDescription(RACSignal *signal) {
 	_innerSubscriber = subscriber;
 	_signal = signal;
 	_disposable = disposable;
-
 	[self.innerSubscriber didSubscribeWithDisposable:self.disposable];
 	return self;
 }
 
 #pragma mark RACSubscriber
+
+/// 订阅信号后 信号优先到达这里 然后才发送给innerSubscriber
+/// 如果订阅被取消 则不发送
 
 - (void)sendNext:(id)value {
 	if (self.disposable.disposed) return;
@@ -94,6 +97,7 @@ static const char *cleanedSignalDescription(RACSignal *signal) {
 	[self.innerSubscriber sendCompleted];
 }
 
+/// 这个方法其实没必要
 - (void)didSubscribeWithDisposable:(RACCompoundDisposable *)disposable {
 	if (disposable != self.disposable) {
 		[self.disposable addDisposable:disposable];

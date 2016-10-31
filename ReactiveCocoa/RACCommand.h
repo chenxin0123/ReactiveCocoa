@@ -1,4 +1,4 @@
-//
+//!
 //  RACCommand.h
 //  ReactiveCocoa
 //
@@ -24,6 +24,7 @@ extern NSString * const RACUnderlyingCommandErrorKey;
 
 /// A command is a signal triggered in response to some action, typically
 /// UI-related.
+///
 @interface RACCommand : NSObject
 
 /// A signal of the signals returned by successful invocations of -execute:

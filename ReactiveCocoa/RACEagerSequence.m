@@ -1,4 +1,4 @@
-//
+//!
 //  RACEagerSequence.m
 //  ReactiveCocoa
 //
@@ -14,10 +14,12 @@
 
 #pragma mark RACStream
 
+/// eager的return也是eager
 + (instancetype)return:(id)value {
 	return [[self sequenceWithArray:@[ value ] offset:0] setNameWithFormat:@"+return: %@", [value rac_description]];
 }
 
+/// 直接遍历所有 简单直接。。。
 - (instancetype)bind:(RACStreamBindBlock (^)(void))block {
 	NSCParameterAssert(block != nil);
 	RACStreamBindBlock bindBlock = block();
@@ -39,6 +41,7 @@
 	return [[self.class sequenceWithArray:resultArray offset:0] setNameWithFormat:@"[%@] -bind:", self.name];
 }
 
+/// 直接获取数组然后返回一个新的RACEagerSequence
 - (instancetype)concat:(RACSequence *)sequence {
 	NSCParameterAssert(sequence != nil);
 	NSCParameterAssert([sequence isKindOfClass:RACSequence.class]);

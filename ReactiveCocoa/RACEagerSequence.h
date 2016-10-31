@@ -1,4 +1,4 @@
-//
+//!
 //  RACEagerSequence.h
 //  ReactiveCocoa
 //

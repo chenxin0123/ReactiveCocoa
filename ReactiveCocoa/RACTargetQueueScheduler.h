@@ -1,4 +1,4 @@
-//
+//!
 //  RACTargetQueueScheduler.h
 //  ReactiveCocoa
 //
@@ -19,6 +19,7 @@
 /// targetQueue - The queue to target. Cannot be NULL.
 ///
 /// Returns the initialized object.
+/// 创建一个串行的队列 然后dispatch_set_target_queue(queue, targetQueue);
 - (id)initWithName:(NSString *)name targetQueue:(dispatch_queue_t)targetQueue;
 
 @end

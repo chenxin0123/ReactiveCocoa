@@ -1,4 +1,4 @@
-//
+//!
 //  RACMulticastConnection.h
 //  ReactiveCocoa
 //
@@ -23,15 +23,20 @@
 ///
 /// Note that you shouldn't create RACMulticastConnection manually. Instead use
 /// -[RACSignal publish] or -[RACSignal multicast:].
+/// 实现所有订阅者共享一次订阅 防止订阅时产生的副作用发生多次
+/// 两种使用方法：
+/// 1. connect 然后订阅signal
+/// 2. 订阅autoconnect
 @interface RACMulticastConnection : NSObject
 
-/// The multicasted signal.
+/// The multicasted signal. 这其实是个RACSubject
 @property (nonatomic, strong, readonly) RACSignal *signal;
 
 /// Connect to the underlying signal by subscribing to it. Calling this multiple
 /// times does nothing but return the existing connection's disposable.
 ///
 /// Returns the disposable for the subscription to the multicasted signal.
+/// 触发订阅操作 但是只会进行一次
 - (RACDisposable *)connect;
 
 /// Connects to the underlying signal when the returned signal is first

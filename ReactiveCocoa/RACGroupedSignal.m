@@ -1,4 +1,4 @@
-//
+//!
 //  RACGroupedSignal.m
 //  ReactiveCocoa
 //

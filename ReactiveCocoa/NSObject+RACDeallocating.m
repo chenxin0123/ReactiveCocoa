@@ -1,4 +1,4 @@
-//
+//!
 //  NSObject+RACDeallocating.m
 //  ReactiveCocoa
 //
@@ -15,6 +15,7 @@
 
 static const void *RACObjectCompoundDisposable = &RACObjectCompoundDisposable;
 
+/// 创建一个NSMutableSet存放swizzledClasses
 static NSMutableSet *swizzledClasses() {
 	static dispatch_once_t onceToken;
 	static NSMutableSet *swizzledClasses = nil;
@@ -25,6 +26,9 @@ static NSMutableSet *swizzledClasses() {
 	return swizzledClasses;
 }
 
+/// @synchronized (swizzledClasses())
+/// swizzle dealloc
+/// 在dealloc之前执行[self.rac_deallocDisposable dispose] 触发rac_willDeallocSignal发送complete
 static void swizzleDeallocIfNeeded(Class classToSwizzle) {
 	@synchronized (swizzledClasses()) {
 		NSString *className = NSStringFromClass(classToSwizzle);
@@ -39,6 +43,7 @@ static void swizzleDeallocIfNeeded(Class classToSwizzle) {
 			[compoundDisposable dispose];
 
 			if (originalDealloc == NULL) {
+                // 调用父类的
 				struct objc_super superInfo = {
 					.receiver = self,
 					.super_class = class_getSuperclass(classToSwizzle)
@@ -47,6 +52,7 @@ static void swizzleDeallocIfNeeded(Class classToSwizzle) {
 				void (*msgSend)(struct objc_super *, SEL) = (__typeof__(msgSend))objc_msgSendSuper;
 				msgSend(&superInfo, deallocSelector);
 			} else {
+                // 调用类本身的
 				originalDealloc(self, deallocSelector);
 			}
 		};
@@ -55,6 +61,7 @@ static void swizzleDeallocIfNeeded(Class classToSwizzle) {
 		
 		if (!class_addMethod(classToSwizzle, deallocSelector, newDeallocIMP, "v@:")) {
 			// The class already contains a method implementation.
+            // 添加失败 所有这里取到的不是父类的方法
 			Method deallocMethod = class_getInstanceMethod(classToSwizzle, deallocSelector);
 			
 			// We need to store original implementation before setting new implementation
@@ -71,6 +78,8 @@ static void swizzleDeallocIfNeeded(Class classToSwizzle) {
 
 @implementation NSObject (RACDeallocating)
 
+/// 这个信号只可能发送complete 返回RACReplaySubject
+/// 用RACReplaySubject 如果对象已经被释放 直接发送complete
 - (RACSignal *)rac_willDeallocSignal {
 	RACSignal *signal = objc_getAssociatedObject(self, _cmd);
 	if (signal != nil) return signal;
@@ -86,6 +95,8 @@ static void swizzleDeallocIfNeeded(Class classToSwizzle) {
 	return subject;
 }
 
+/// 无则创建 不要手动去dispose 这样会触发rac_willDeallocSignal
+/// swizzleDeallocIfNeeded看方法详情
 - (RACCompoundDisposable *)rac_deallocDisposable {
 	@synchronized (self) {
 		RACCompoundDisposable *compoundDisposable = objc_getAssociatedObject(self, RACObjectCompoundDisposable);

@@ -1,4 +1,4 @@
-//
+//!
 //  RACMulticastConnection.m
 //  ReactiveCocoa
 //
@@ -51,6 +51,7 @@
 
 #pragma mark Connecting
 
+/// subject订阅sourceSignal 只会订阅一次
 - (RACDisposable *)connect {
 	BOOL shouldConnect = OSAtomicCompareAndSwap32Barrier(0, 1, &_hasConnected);
 
@@ -61,6 +62,9 @@
 	return self.serialDisposable;
 }
 
+/// 返回一个信号
+/// 订阅subject 然后connect
+/// 返回的RACDisposable会判断订阅者数量是否为0 为0则将self.serialDisposable干掉
 - (RACSignal *)autoconnect {
 	__block volatile int32_t subscriberCount = 0;
 

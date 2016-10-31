@@ -1,4 +1,4 @@
-//
+//!
 //  RACTupleSequence.m
 //  ReactiveCocoa
 //
@@ -23,6 +23,7 @@
 
 #pragma mark Lifecycle
 
+/// [offset count) 如果offset为count则返回empty
 + (instancetype)sequenceWithTupleBackingArray:(NSArray *)backingArray offset:(NSUInteger)offset {
 	NSCParameterAssert(offset <= backingArray.count);
 
@@ -36,17 +37,20 @@
 
 #pragma mark RACSequence
 
+/// RACTupleNil -> NSNull
 - (id)head {
 	id object = self.tupleBackingArray[self.offset];
 	return (object == RACTupleNil.tupleNil ? NSNull.null : object);
 }
 
+/// 新建一个RACTupleSequence offset+1
 - (RACSequence *)tail {
 	RACSequence *sequence = [self.class sequenceWithTupleBackingArray:self.tupleBackingArray offset:self.offset + 1];
 	sequence.name = self.name;
 	return sequence;
 }
 
+/// 返回去掉offset之前的值后的有效数组
 - (NSArray *)array {
 	NSRange range = NSMakeRange(self.offset, self.tupleBackingArray.count - self.offset);
 	NSMutableArray *array = [[NSMutableArray alloc] initWithCapacity:range.length];

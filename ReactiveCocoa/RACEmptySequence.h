@@ -1,4 +1,4 @@
-//
+//!
 //  RACEmptySequence.h
 //  ReactiveCocoa
 //
@@ -9,6 +9,7 @@
 #import "RACSequence.h"
 
 // Private class representing an empty sequence.
+// 单例
 @interface RACEmptySequence : RACSequence
 
 @end

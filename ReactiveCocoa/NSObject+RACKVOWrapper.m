@@ -1,4 +1,4 @@
-//
+//!
 //  NSObject+RACKVOWrapper.m
 //  ReactiveCocoa
 //
@@ -17,7 +17,8 @@
 #import "RACSerialDisposable.h"
 
 @implementation NSObject (RACKVOWrapper)
-
+// son.school.name 会触发son son.school son.school.name 三次KVO
+// 这里使用了NSKeyValueObservingOptionPrior 不管你options里面有没有
 - (RACDisposable *)rac_observeKeyPath:(NSString *)keyPath options:(NSKeyValueObservingOptions)options observer:(__weak NSObject *)weakObserver block:(void (^)(id, NSDictionary *, BOOL, BOOL))block {
 	NSCParameterAssert(block != nil);
 	NSCParameterAssert(keyPath.rac_keyPathComponents.count > 0);
@@ -29,6 +30,7 @@
 	NSArray *keyPathComponents = keyPath.rac_keyPathComponents;
 	BOOL keyPathHasOneComponent = (keyPathComponents.count == 1);
 	NSString *keyPathHead = keyPathComponents[0];
+    // 除了第一个PathComponent之外
 	NSString *keyPathTail = keyPath.rac_keyPathByDeletingFirstKeyPathComponent;
 
 	RACCompoundDisposable *disposable = [RACCompoundDisposable compoundDisposable];
@@ -66,10 +68,15 @@
 			//
 			// Attempting to observe non-weak properties will result in
 			// broken behavior for dynamic getters, so don't even try.
+            // Block 以及 Protocol不能KVO
+            // 非weak对象 本身被强引用 不跟踪他的Dealloc
 			shouldAddDeallocObserver = isObject && isWeak && !isBlock && !isProtocol;
 		}
 	}
 
+    
+    //
+    // 弱引用才需要执行这个addDeallocObserverToPropertyValue 因为弱引用释放不会触发KVO 而强引用会
 	// Adds the callback block to the value's deallocation. Also adds the logic to
 	// clean up the callback to the firstComponentDisposable.
 	void (^addDeallocObserverToPropertyValue)(NSObject *) = ^(NSObject *value) {
@@ -86,12 +93,13 @@
 			NSKeyValueChangeNewKey: NSNull.null,
 		};
 
+        // 当weak引用对象释放的时候 调用block
 		RACCompoundDisposable *valueDisposable = value.rac_deallocDisposable;
 		RACDisposable *deallocDisposable = [RACDisposable disposableWithBlock:^{
 			block(nil, change, YES, keyPathHasOneComponent);
 		}];
-
 		[valueDisposable addDisposable:deallocDisposable];
+        
 		[firstComponentDisposable() addDisposable:[RACDisposable disposableWithBlock:^{
 			[valueDisposable removeDisposable:deallocDisposable];
 		}]];
@@ -99,6 +107,9 @@
 
 	// Adds the callback block to the remaining path components on the value. Also
 	// adds the logic to clean up the callbacks to the firstComponentDisposable.
+    // son.school.name 会触发son son.school son.school.name 三次KVO
+    // 这里不用NSKeyValueObservingOptionInitial 因为后面的代码已经做了处理
+    // 如果keyPathHasOneComponent为NO的时候才会调用addObserverToValue
 	void (^addObserverToValue)(NSObject *) = ^(NSObject *value) {
 		RACDisposable *observerDisposable = [value rac_observeKeyPath:keyPathTail options:(options & ~NSKeyValueObservingOptionInitial) observer:weakObserver block:block];
 		[firstComponentDisposable() addDisposable:observerDisposable];
@@ -111,11 +122,14 @@
 	// Note this does not use NSKeyValueObservingOptionInitial so this only
 	// handles changes to the value, callbacks to the initial value must be added
 	// separately.
+    // NSKeyValueObservingOptionPrior的作用是在值改变之前先发送一个NSKeyValueChangeNotificationIsPriorKey通知
+    // 如果是NSKeyValueChangeNotificationIsPriorKey 那么将旧值的订阅取消
 	NSKeyValueObservingOptions trampolineOptions = (options | NSKeyValueObservingOptionPrior) & ~NSKeyValueObservingOptionInitial;
 	RACKVOTrampoline *trampoline = [[RACKVOTrampoline alloc] initWithTarget:self observer:strongObserver keyPath:keyPathHead options:trampolineOptions block:^(id trampolineTarget, id trampolineObserver, NSDictionary *change) {
 		// If this is a prior notification, clean up all the callbacks added to the
 		// previous value and call the callback block. Everything else is deferred
 		// until after we get the notification after the change.
+        
 		if ([change[NSKeyValueChangeNotificationIsPriorKey] boolValue]) {
 			[firstComponentDisposable() dispose];
 
@@ -152,6 +166,9 @@
 			return;
 		}
 
+        // 比如keypath为son.name 那么会先KVOson 然后KVOson.name
+        // 如果son释放 那么会重新KVO新的son.name
+        
 		// The value has changed, is not nil, and there are more key path components
 		// to consider. Add the callbacks to the value for the remaining key path
 		// components and call the callback block with the current value of the full
@@ -173,6 +190,7 @@
 		}
 	}
 
+    // 发送初始的值 这就是为什么上面代码不用NSKeyValueObservingOptionInitial
 	// Call the block with the initial value if needed.
 	if ((options & NSKeyValueObservingOptionInitial) != 0) {
 		id initialValue = [self valueForKeyPath:keyPath];
@@ -184,12 +202,14 @@
 	}
 
 
+    // 放入target observer的rac_deallocDisposable 对象释放就结束此次KVO
 	RACCompoundDisposable *observerDisposable = strongObserver.rac_deallocDisposable;
 	RACCompoundDisposable *selfDisposable = self.rac_deallocDisposable;
 	// Dispose of this observation if the receiver or the observer deallocate.
 	[observerDisposable addDisposable:disposable];
 	[selfDisposable addDisposable:disposable];
 
+    // 返回的RACDisposable用来取消本次KVO
 	return [RACDisposable disposableWithBlock:^{
 		[disposable dispose];
 		[observerDisposable removeDisposable:disposable];

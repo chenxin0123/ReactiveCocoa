@@ -1,4 +1,4 @@
-//
+//!
 //  RACImmediateScheduler.m
 //  ReactiveCocoa
 //
@@ -41,7 +41,9 @@
 	return nil;
 }
 
+
 - (RACDisposable *)scheduleRecursiveBlock:(RACSchedulerRecursiveBlock)recursiveBlock {
+    // recursiveBlock中有停止条件 如果停止则^{remaining++;}不会被调用 循环停止
 	for (__block NSUInteger remaining = 1; remaining > 0; remaining--) {
 		recursiveBlock(^{
 			remaining++;

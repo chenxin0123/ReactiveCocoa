@@ -1,4 +1,4 @@
-//
+//!
 //  RACSequence.h
 //  ReactiveCocoa
 //
@@ -23,6 +23,8 @@
 ///
 /// Implemented as a class cluster. A minimal implementation for a subclass
 /// consists simply of -head and -tail.
+/// 类簇
+/// 跟信号不同的是 RACSequence不能被订阅
 @interface RACSequence : RACStream <NSCoding, NSCopying, NSFastEnumeration>
 
 /// The first object in the sequence, or nil if the sequence is empty.

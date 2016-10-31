@@ -1,4 +1,4 @@
-//
+//!
 //  RACTuple.m
 //  ReactiveCocoa
 //
@@ -75,10 +75,10 @@
 
 #pragma mark NSFastEnumeration
 
+/// 支持FastEnumeration遍历
 - (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(id __unsafe_unretained [])buffer count:(NSUInteger)len {
 	return [self.backingArray countByEnumeratingWithState:state objects:buffer count:len];
 }
-
 
 #pragma mark NSCopying
 
@@ -126,6 +126,7 @@
 	return tuple;
 }
 
+/// 先计算个数再遍历
 + (instancetype)tupleWithObjects:(id)object, ... {
 	RACTuple *tuple = [[self alloc] init];
 
@@ -157,6 +158,8 @@
 	return tuple;
 }
 
+
+/// RACTupleNil.tupleNil -> nil
 - (id)objectAtIndex:(NSUInteger)index {
 	if (index >= self.count) return nil;
 	
@@ -164,6 +167,7 @@
 	return (object == RACTupleNil.tupleNil ? nil : object);
 }
 
+/// RACTupleNil.tupleNil -> NSNull
 - (NSArray *)allObjects {
 	NSMutableArray *newArray = [NSMutableArray arrayWithCapacity:self.backingArray.count];
 	for (id object in self.backingArray) {
@@ -173,6 +177,7 @@
 	return newArray;
 }
 
+/// 返回一个新建的tuple
 - (instancetype)tupleByAddingObject:(id)obj {
 	NSArray *newArray = [self.backingArray arrayByAddingObject:obj ?: RACTupleNil.tupleNil];
 	return [self.class tupleWithObjectsFromArray:newArray];
@@ -218,7 +223,7 @@
 @end
 
 @implementation RACTuple (ObjectSubscripting)
-
+/// 支持tuple[i]的访问方式
 - (id)objectAtIndexedSubscript:(NSUInteger)idx {
 	return [self objectAtIndex:idx];
 }
@@ -240,6 +245,10 @@
 	return trampoline;
 }
 
+// 支持trampoline[variables] = tuple语法
+// variables 为NSValue数组 valueWithPointer类型的NSValue
+// tuple数量多于variables的话 剩余的会被忽略
+// 反之 variables中剩余的会被设为nil
 - (void)setObject:(RACTuple *)tuple forKeyedSubscript:(NSArray *)variables {
 	NSCParameterAssert(variables != nil);
 	

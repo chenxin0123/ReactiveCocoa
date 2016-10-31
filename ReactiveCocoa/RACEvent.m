@@ -1,4 +1,4 @@
-//
+//!
 //  RACEvent.m
 //  ReactiveCocoa
 //
@@ -37,6 +37,7 @@
 
 #pragma mark Lifecycle
 
+/// 单例
 + (instancetype)completedEvent {
 	static dispatch_once_t pred;
 	static id singleton;
@@ -67,7 +68,7 @@
 }
 
 #pragma mark NSCopying
-
+/// do not support copying
 - (id)copyWithZone:(NSZone *)zone {
 	return self;
 }

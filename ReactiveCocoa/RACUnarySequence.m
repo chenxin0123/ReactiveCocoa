@@ -1,4 +1,4 @@
-//
+//!
 //  RACUnarySequence.m
 //  ReactiveCocoa
 //

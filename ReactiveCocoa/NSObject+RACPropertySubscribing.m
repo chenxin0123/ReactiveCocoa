@@ -21,6 +21,7 @@
 
 @implementation NSObject (RACPropertySubscribing)
 
+/// NSKeyValueObservingOptionInitial 一订阅马上发送初始值
 - (RACSignal *)rac_valuesForKeyPath:(NSString *)keyPath observer:(__weak NSObject *)observer {
 	return [[[self
 		rac_valuesAndChangesForKeyPath:keyPath options:NSKeyValueObservingOptionInitial observer:observer]
@@ -31,6 +32,9 @@
 		setNameWithFormat:@"RACObserve(%@, %@)", self.rac_description, keyPath];
 }
 
+/// zip target和observer的rac_willDeallocSignal 这样任何一个释放 都会执行KVO的清理工作
+/// 所以在deallocSignal complete之前 如果有其他线程正在订阅 则等待锁
+/// takeUntil:deallocSignal
 - (RACSignal *)rac_valuesAndChangesForKeyPath:(NSString *)keyPath options:(NSKeyValueObservingOptions)options observer:(__weak NSObject *)weakObserver {
 	NSObject *strongObserver = weakObserver;
 	keyPath = [keyPath copy];
@@ -40,6 +44,7 @@
 
 	__weak NSObject *weakSelf = self;
 
+    
 	RACSignal *deallocSignal = [[RACSignal
 		zip:@[
 			self.rac_willDeallocSignal,
@@ -65,6 +70,8 @@
 				[objectLock unlock];
 			};
 
+            // objc_precise_lifetime看下面的博客
+            // https://www.bignerdranch.com/blog/arc-gotcha-unexpectedly-short-lifetimes/
 			__strong NSObject *observer __attribute__((objc_precise_lifetime)) = weakObserver;
 			__strong NSObject *self __attribute__((objc_precise_lifetime)) = weakSelf;
 

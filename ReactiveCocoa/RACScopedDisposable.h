@@ -1,4 +1,4 @@
-//
+//!
 //  RACScopedDisposable.h
 //  ReactiveCocoa
 //
@@ -13,6 +13,7 @@
 
 /// Creates a new scoped disposable that will also dispose of the given
 /// disposable when it is dealloc'd.
+/// 可以用来使某次订阅只在一个作用域内有效 出了作用域就disposed
 + (instancetype)scopedDisposableWithDisposable:(RACDisposable *)disposable;
 
 @end

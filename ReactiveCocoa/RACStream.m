@@ -1,4 +1,4 @@
-//
+//!
 //  RACStream.m
 //  ReactiveCocoa
 //
@@ -24,7 +24,9 @@
 }
 
 #pragma mark Abstract methods
-
+/// 子类只需要实现以下5个方法即可
+/// RACSignal : 返回RACEmptySignal
+/// RACSequence : 返回RACEmptySequence
 + (instancetype)empty {
 	return nil;
 }
@@ -33,6 +35,9 @@
 	return nil;
 }
 
+/// RACSignal : RACReturnSignal
+/// RACSequence : RACUnarySequence
+/// RACEagerSequence : RACEagerSequence
 + (instancetype)return:(id)value {
 	return nil;
 }
@@ -66,6 +71,9 @@
 
 @implementation RACStream (Operations)
 
+/// 用bind通过block(value)返回一个新的流
+/// 将每个值都映射成一个流 然后订阅这个流
+/// map通过return:来实现值的映射
 - (instancetype)flattenMap:(RACStream * (^)(id value))block {
 	Class class = self.class;
 
@@ -79,6 +87,7 @@
 	}] setNameWithFormat:@"[%@] -flattenMap:", self.name];
 }
 
+/// 将流(值)的流 => 流(值)
 - (instancetype)flatten {
 	__weak RACStream *stream __attribute__((unused)) = self;
 	return [[self flattenMap:^(id value) {
@@ -86,6 +95,7 @@
 	}] setNameWithFormat:@"[%@] -flatten", self.name];
 }
 
+/// 通过flattenMap 来实现值的映射
 - (instancetype)map:(id (^)(id value))block {
 	NSCParameterAssert(block != nil);
 
@@ -96,6 +106,7 @@
 	}] setNameWithFormat:@"[%@] -map:", self.name];
 }
 
+/// 将值都替换成object
 - (instancetype)mapReplace:(id)object {
 	return [[self map:^(id _) {
 		return object;
@@ -108,6 +119,7 @@
 		scanWithStart:RACTuplePack(start)
 		reduce:^(RACTuple *previousTuple, id next) {
 			id value = reduceBlock(previousTuple[0], next);
+            /// 返回值中要保存next用于下一个计算
 			return RACTuplePack(next, value);
 		}]
 		map:^(RACTuple *tuple) {
@@ -116,6 +128,7 @@
 		setNameWithFormat:@"[%@] -combinePreviousWithStart: %@ reduce:", self.name, [start rac_description]];
 }
 
+/// block返回YES才通过 通过返回empty来过滤
 - (instancetype)filter:(BOOL (^)(id value))block {
 	NSCParameterAssert(block != nil);
 
@@ -130,12 +143,14 @@
 	}] setNameWithFormat:@"[%@] -filter:", self.name];
 }
 
+/// 过滤掉指定的值
 - (instancetype)ignore:(id)value {
 	return [[self filter:^ BOOL (id innerValue) {
 		return innerValue != value && ![innerValue isEqual:value];
 	}] setNameWithFormat:@"[%@] -ignore: %@", self.name, [value rac_description]];
 }
 
+/// 将RACTuple类型值降维 流的值类型必须为RACTuple 返回新的流
 - (instancetype)reduceEach:(id (^)())reduceBlock {
 	NSCParameterAssert(reduceBlock != nil);
 
@@ -146,12 +161,14 @@
 	}] setNameWithFormat:@"[%@] -reduceEach:", self.name];
 }
 
+/// 信号开始前 先发送value
 - (instancetype)startWith:(id)value {
 	return [[[self.class return:value]
 		concat:self]
 		setNameWithFormat:@"[%@] -startWith: %@", self.name, [value rac_description]];
 }
 
+/// 无视前面skipCount个值
 - (instancetype)skip:(NSUInteger)skipCount {
 	Class class = self.class;
 	
@@ -167,6 +184,7 @@
 	}] setNameWithFormat:@"[%@] -skip: %lu", self.name, (unsigned long)skipCount];
 }
 
+/// 只取前count个值 之后的值返回nil
 - (instancetype)take:(NSUInteger)count {
 	Class class = self.class;
 	
@@ -187,11 +205,14 @@
 	}] setNameWithFormat:@"[%@] -take: %lu", self.name, (unsigned long)count];
 }
 
+/// + (instancetype)zip:(id<NSFastEnumeration>)streams
+/// + (RACSignal *)combineLatest:(id<NSFastEnumeration>)signals
 + (instancetype)join:(id<NSFastEnumeration>)streams block:(RACStream * (^)(id, id))block {
 	RACStream *current = nil;
 
 	// Creates streams of successively larger tuples by combining the input
 	// streams one-by-one.
+    // 遍历所有的流 计算current
 	for (RACStream *stream in streams) {
 		// For the first stream, just wrap its values in a RACTuple. That way,
 		// if only one stream is given, the result is still a stream of tuples.
@@ -225,12 +246,15 @@
 	}];
 }
 
+/// 将全部的流转为一个流 值为RACTuple 太多层了吧 性能会不会很差。。
 + (instancetype)zip:(id<NSFastEnumeration>)streams {
 	return [[self join:streams block:^(RACStream *left, RACStream *right) {
+        // zipWith 一方耗尽则停止
 		return [left zipWith:right];
 	}] setNameWithFormat:@"+zip: %@", streams];
 }
 
+/// 先zip再reduceEach
 + (instancetype)zip:(id<NSFastEnumeration>)streams reduce:(id (^)())reduceBlock {
 	NSCParameterAssert(reduceBlock != nil);
 
@@ -253,6 +277,7 @@
 	return [result setNameWithFormat:@"+concat: %@", streams];
 }
 
+/// 提供一个初始的running 对每个next进行计算 计算结果作为流的值以及下一个running值 基于下面的方法 只是无视了index参数
 - (instancetype)scanWithStart:(id)startingValue reduce:(id (^)(id running, id next))reduceBlock {
 	NSCParameterAssert(reduceBlock != nil);
 
@@ -274,6 +299,7 @@
 		__block NSUInteger index = 0;
 
 		return ^(id value, BOOL *stop) {
+            // 计算结果赋值给running
 			running = reduceBlock(running, value, index++);
 			return [class return:running];
 		};
@@ -332,6 +358,7 @@
 	}] setNameWithFormat:@"[%@] -skipWhileBlock:", self.name];
 }
 
+/// 如果当前流的值与上一个流值相同则不发送 用-isEqual:来判断
 - (instancetype)distinctUntilChanged {
 	Class class = self.class;
 

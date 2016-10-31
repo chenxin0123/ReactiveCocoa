@@ -1,4 +1,4 @@
-//
+//!
 //  RACStream.h
 //  ReactiveCocoa
 //
@@ -9,6 +9,9 @@
 #import <Foundation/Foundation.h>
 
 @class RACStream;
+
+
+///RACStream是一个抽象类 代表一个值流 monad？
 
 /// A block which accepts a value from a RACStream and returns a new instance
 /// of the same stream class.
@@ -27,11 +30,12 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 @interface RACStream : NSObject
 
 /// Returns an empty stream.
+/// 空的流
 + (instancetype)empty;
 
 /// Lifts `value` into the stream monad.
-///
 /// Returns a stream containing only the given value.
+/// 返回一个值流
 + (instancetype)return:(id)value;
 
 /// Lazily binds a block to the values in the receiver.
@@ -45,6 +49,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 ///
 /// Returns a new stream which represents the combined result of all lazy
 /// applications of `block`.
+/// 绑架流 返回一个新的流 map filter等基于此方法实现
 - (instancetype)bind:(RACStreamBindBlock (^)(void))block;
 
 /// Appends the values of `stream` to the values in the receiver.
@@ -53,6 +58,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 ///          concrete class as the receiver, and should not be `nil`.
 ///
 /// Returns a new stream representing the receiver followed by `stream`.
+/// 将两个流串联在一起 一个流结束 另一个流开始
 - (instancetype)concat:(RACStream *)stream;
 
 /// Zips the values in the receiver with those of the given stream to create
@@ -66,6 +72,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 ///
 /// Returns a new stream of RACTuples, representing the zipped values of the
 /// two streams.
+/// 合并两个流 直到其中一个耗尽 返回一个新的流 值类型为RACTuples
 - (instancetype)zipWith:(RACStream *)stream;
 
 @end
@@ -122,6 +129,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 ///
 /// Returns a new stream which represents the combined streams resulting from
 /// mapping `block`.
+/// 从block中返回一个新的流 将一个流映射为此新的流 基于bind实现
 - (instancetype)flattenMap:(RACStream * (^)(id value))block;
 
 /// Flattens a stream of streams.
@@ -130,6 +138,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 ///
 /// Returns a stream consisting of the combined streams obtained from the
 /// receiver.
+/// 基于flattenMap
 - (instancetype)flatten;
 
 /// Maps `block` across the values in the receiver.
@@ -137,12 +146,14 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 /// This corresponds to the `Select` method in Rx.
 ///
 /// Returns a new stream with the mapped values.
+/// 返回一个新的流 值为block的返回值
 - (instancetype)map:(id (^)(id value))block;
 
 /// Replaces each value in the receiver with the given object.
 ///
 /// Returns a new stream which includes the given object once for each value in
 /// the receiver.
+/// 效果等同map 不过每次都返回相同的值
 - (instancetype)mapReplace:(id)object;
 
 /// Filters out values in the receiver that don't pass the given test.
@@ -150,6 +161,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 /// This corresponds to the `Where` method in Rx.
 ///
 /// Returns a new stream with only those values that passed.
+/// 返回block返回YES的流 基于flattenMap
 - (instancetype)filter:(BOOL (^)(id value))block;
 
 /// Filters out values in the receiver that equal (via -isEqual:) the provided value.
@@ -158,6 +170,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 ///
 /// Returns a new stream containing only the values which did not compare equal
 /// to `value`.
+/// 过滤指定值 基于filter
 - (instancetype)ignore:(id)value;
 
 /// Unpacks each RACTuple in the receiver and maps the values to a new value.
@@ -168,10 +181,12 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 ///               return value must be an object. This argument cannot be nil.
 ///
 /// Returns a new stream of reduced tuple values.
+/// 降维 流的值类型必须为RACTuple 基于map
 - (instancetype)reduceEach:(id (^)())reduceBlock;
 
 /// Returns a stream consisting of `value`, followed by the values in the
 /// receiver.
+/// 流开始前先发一个值为value的流 基于concat
 - (instancetype)startWith:(id)value;
 
 /// Skips the first `skipCount` values in the receiver.
@@ -179,11 +194,13 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 /// Returns the receiver after skipping the first `skipCount` values. If
 /// `skipCount` is greater than the number of values in the stream, an empty
 /// stream is returned.
+/// 无视前面的skipCount个值 基于bind
 - (instancetype)skip:(NSUInteger)skipCount;
 
 /// Returns a stream of the first `count` values in the receiver. If `count` is
 /// greater than or equal to the number of values in the stream, a stream
 /// equivalent to the receiver is returned.
+/// 只获取前面的count个值
 - (instancetype)take:(NSUInteger)count;
 
 /// Zips the values in the given streams to create RACTuples.
@@ -197,6 +214,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 ///
 /// Returns a new stream containing RACTuples of the zipped values from the
 /// streams.
+/// 将streams的值组装成RACTuples的流 直到某个流耗尽 基于zipWith
 + (instancetype)zip:(id<NSFastEnumeration>)streams;
 
 /// Zips streams using +zip:, then reduces the resulting tuples into a single
@@ -219,9 +237,11 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 ///
 /// Returns a new stream containing the results from each invocation of
 /// `reduceBlock`.
+/// 基于zip reduceEach
 + (instancetype)zip:(id<NSFastEnumeration>)streams reduce:(id (^)())reduceBlock;
 
 /// Returns a stream obtained by concatenating `streams` in order.
+/// 基于concat
 + (instancetype)concat:(id<NSFastEnumeration>)streams;
 
 /// Combines values in the receiver from left to right using the given block.
@@ -252,6 +272,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 ///
 /// Returns a new stream that consists of each application of `reduceBlock`. If the
 /// receiver is empty, an empty stream is returned.
+/// 提供一个初始的running 对每个next进行计算 计算结果作为流的值以及下一个running值 基于下面的方法 只是无视了index参数
 - (instancetype)scanWithStart:(id)startingValue reduce:(id (^)(id running, id next))reduceBlock;
 
 /// Combines values in the receiver from left to right using the given block
@@ -290,6 +311,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 ///
 /// Returns a new stream consisting of the return values from each application of
 /// `reduceBlock`.
+/// 将当前的值与上一个进行计算 计算结果作为流的值
 - (instancetype)combinePreviousWithStart:(id)start reduce:(id (^)(id previous, id current))reduceBlock;
 
 /// Takes values until the given block returns `YES`.
@@ -297,6 +319,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 /// Returns a stream of the initial values in the receiver that fail `predicate`.
 /// If `predicate` never returns `YES`, a stream equivalent to the receiver is
 /// returned.
+/// 基于bind 当predicate返回YES 流结束
 - (instancetype)takeUntilBlock:(BOOL (^)(id x))predicate;
 
 /// Takes values until the given block returns `NO`.
@@ -304,6 +327,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 /// Returns a stream of the initial values in the receiver that pass `predicate`.
 /// If `predicate` never returns `NO`, a stream equivalent to the receiver is
 /// returned.
+/// 跟takeUntilBlock相反 predicate返回NO时流结束 基于takeUntilBlock while(block){}
 - (instancetype)takeWhileBlock:(BOOL (^)(id x))predicate;
 
 /// Skips values until the given block returns `YES`.
@@ -311,6 +335,7 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 /// Returns a stream containing the values of the receiver that follow any
 /// initial values failing `predicate`. If `predicate` never returns `YES`,
 /// an empty stream is returned.
+/// 当predicate返回YES 流开始
 - (instancetype)skipUntilBlock:(BOOL (^)(id x))predicate;
 
 /// Skips values until the given block returns `NO`.
@@ -318,10 +343,12 @@ typedef RACStream * (^RACStreamBindBlock)(id value, BOOL *stop);
 /// Returns a stream containing the values of the receiver that follow any
 /// initial values passing `predicate`. If `predicate` never returns `NO`, an
 /// empty stream is returned.
+/// 与skipUntilBlock相反 当predicate返回NO 流开始
 - (instancetype)skipWhileBlock:(BOOL (^)(id x))predicate;
 
 /// Returns a stream of values for which -isEqual: returns NO when compared to the
 /// previous value.
+/// 如果当前流的值与上一个流值相同则不发送 用-isEqual:来判断
 - (instancetype)distinctUntilChanged;
 
 @end

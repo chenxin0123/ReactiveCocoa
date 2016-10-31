@@ -1,4 +1,4 @@
-//
+//!
 //  RACQueueScheduler.m
 //  ReactiveCocoa
 //
@@ -58,6 +58,7 @@
 
 #pragma mark RACScheduler
 
+/// 返回一个RACDisposable 如果提前disposed则block不会被执行
 - (RACDisposable *)schedule:(void (^)(void))block {
 	NSCParameterAssert(block != NULL);
 
@@ -71,6 +72,7 @@
 	return disposable;
 }
 
+/// date之后执行
 - (RACDisposable *)after:(NSDate *)date schedule:(void (^)(void))block {
 	NSCParameterAssert(date != nil);
 	NSCParameterAssert(block != NULL);
@@ -85,6 +87,7 @@
 	return disposable;
 }
 
+/// date之后开始定时器 定时执行block
 - (RACDisposable *)after:(NSDate *)date repeatingEvery:(NSTimeInterval)interval withLeeway:(NSTimeInterval)leeway schedule:(void (^)(void))block {
 	NSCParameterAssert(date != nil);
 	NSCParameterAssert(interval > 0.0 && interval < INT64_MAX / NSEC_PER_SEC);

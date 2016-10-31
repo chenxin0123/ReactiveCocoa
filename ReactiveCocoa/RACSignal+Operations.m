@@ -1,4 +1,4 @@
-//
+//!
 //  RACSignal+Operations.m
 //  ReactiveCocoa
 //
@@ -39,11 +39,14 @@ const NSInteger RACSignalErrorNoMatchingCase = 2;
 // If the signal errors or completes, the corresponding block is invoked. If the
 // disposable passed to the block is _not_ disposed, then the signal is
 // subscribed to again.
+/// 订阅信号 当信号完成或者出错时重新订阅信号 无限递归 触发返回的RACDisposable dsposed
+/// compoundDisposable会被传入error以及completed 可以在这两个地方终止无限订阅
 static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), void (^error)(NSError *, RACDisposable *), void (^completed)(RACDisposable *)) {
 	next = [next copy];
 	error = [error copy];
 	completed = [completed copy];
 
+    
 	RACCompoundDisposable *compoundDisposable = [RACCompoundDisposable compoundDisposable];
 
 	RACSchedulerRecursiveBlock recursiveBlock = ^(void (^recurse)(void)) {
@@ -76,6 +79,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	recursiveBlock(^{
 		RACScheduler *recursiveScheduler = RACScheduler.currentScheduler ?: [RACScheduler scheduler];
 
+        /// 这个schedulingDisposable作为递归的终止条件
 		RACDisposable *schedulingDisposable = [recursiveScheduler scheduleRecursiveBlock:recursiveBlock];
 		[compoundDisposable addDisposable:schedulingDisposable];
 	});
@@ -85,6 +89,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 
 @implementation RACSignal (Operations)
 
+/// sendNext之前做额外的操作
 - (RACSignal *)doNext:(void (^)(id x))block {
 	NSCParameterAssert(block != NULL);
 
@@ -130,12 +135,16 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -doCompleted:", self.name];
 }
 
+/// 延迟发送next值 等待interval后无新的next或者complete才发送
+/// 若interval时间内有新的值 则旧的next将被丢弃
+/// 如果interval太小 将可能导致next值一直被延迟 订阅者无法收到next值
 - (RACSignal *)throttle:(NSTimeInterval)interval {
 	return [[self throttle:interval valuesPassingTest:^(id _) {
 		return YES;
 	}] setNameWithFormat:@"[%@] -throttle: %f", self.name, (double)interval];
 }
 
+/// 与throttle:类似但是只延迟predicate返回YES的值
 - (RACSignal *)throttle:(NSTimeInterval)interval valuesPassingTest:(BOOL (^)(id next))predicate {
 	NSCParameterAssert(interval >= 0);
 	NSCParameterAssert(predicate != nil);
@@ -152,6 +161,8 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		__block BOOL hasNextValue = NO;
 		RACSerialDisposable *nextDisposable = [[RACSerialDisposable alloc] init];
 
+        
+        /// 清空缓存的next值 根据参数决定是否发送缓存的next值
 		void (^flushNext)(BOOL send) = ^(BOOL send) {
 			@synchronized (compoundDisposable) {
 				[nextDisposable.disposable dispose];
@@ -169,6 +180,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 			BOOL shouldThrottle = predicate(x);
 
 			@synchronized (compoundDisposable) {
+                /// 先清空之前的next值
 				flushNext(NO);
 				if (!shouldThrottle) {
 					[subscriber sendNext:x];
@@ -194,6 +206,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -throttle: %f valuesPassingTest:", self.name, (double)interval];
 }
 
+/// 每个值都会被延迟发送 跟throttle不同的是不会把值丢弃
 - (RACSignal *)delay:(NSTimeInterval)interval {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		RACCompoundDisposable *disposable = [RACCompoundDisposable compoundDisposable];
@@ -225,6 +238,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -delay: %f", self.name, (double)interval];
 }
 
+/// 一直重复订阅 直到出现error或者disposable
 - (RACSignal *)repeat {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		return subscribeForever(self,
@@ -241,6 +255,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -repeat", self.name];
 }
 
+/// 一旦出错 通过catchBlock返回一个新信号 再让订阅者订阅这个新信号
 - (RACSignal *)catch:(RACSignal * (^)(NSError *error))catchBlock {
 	NSCParameterAssert(catchBlock != NULL);
 
@@ -270,6 +285,8 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -catchTo: %@", self.name, signal];
 }
 
+/// 对每个值调用tryBlock 如果返回NO 则返回[RACSignal error:error]
+/// 用来验证每个值的正确性?
 - (RACSignal *)try:(BOOL (^)(id value, NSError **errorPtr))tryBlock {
 	NSCParameterAssert(tryBlock != NULL);
 
@@ -280,6 +297,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -try:", self.name];
 }
 
+/// 对每个值做映射 发送新的值 如果映射结果为nil 则发送error
 - (RACSignal *)tryMap:(id (^)(id value, NSError **errorPtr))mapBlock {
 	NSCParameterAssert(mapBlock != NULL);
 
@@ -290,6 +308,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -tryMap:", self.name];
 }
 
+/// 每次订阅之前执行block
 - (RACSignal *)initially:(void (^)(void))block {
 	NSCParameterAssert(block != NULL);
 
@@ -299,6 +318,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -initially:", self.name];
 }
 
+/// error 或者 complete 时调用block
 - (RACSignal *)finally:(void (^)(void))block {
 	NSCParameterAssert(block != NULL);
 
@@ -312,6 +332,9 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		setNameWithFormat:@"[%@] -finally:", self.name];
 }
 
+/// 将值缓存起来 interval后将缓存的值生成RACTuple一口气发出去
+/// 收到error则缓存的值丢弃掉
+/// 收到complete则先把缓存的值发出去
 - (RACSignal *)bufferWithTime:(NSTimeInterval)interval onScheduler:(RACScheduler *)scheduler {
 	NSCParameterAssert(scheduler != nil);
 	NSCParameterAssert(scheduler != RACScheduler.immediateScheduler);
@@ -354,6 +377,8 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -bufferWithTime: %f onScheduler: %@", self.name, (double)interval, scheduler];
 }
 
+/// 将信号的值收集起来放入一个数组
+/// 最后完成后订阅者才会收到next值
 - (RACSignal *)collect {
 	return [[self aggregateWithStartFactory:^{
 		return [[NSMutableArray alloc] init];
@@ -363,6 +388,8 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -collect", self.name];
 }
 
+/// 将收到的值缓存起来 直到收到complete后才发送 count 缓存数量
+/// nil -> RACTupleNil
 - (RACSignal *)takeLast:(NSUInteger)count {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		NSMutableArray *valuesTaken = [NSMutableArray arrayWithCapacity:count];
@@ -384,6 +411,9 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -takeLast: %lu", self.name, (unsigned long)count];
 }
 
+/// 联合两个信号 一旦两者都至少发送过一次next后 每次任意一个信号的next 都会跟另一个信号的最新next生成RACTuple 然后发给订阅者
+/// 任意一个error 则订阅结束
+/// 两个都complete 订阅才结束
 - (RACSignal *)combineLatestWith:(RACSignal *)signal {
 	NSCParameterAssert(signal != nil);
 
@@ -439,12 +469,14 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -combineLatestWith: %@", self.name, signal];
 }
 
+/// 多个信号联合
 + (RACSignal *)combineLatest:(id<NSFastEnumeration>)signals {
 	return [[self join:signals block:^(RACSignal *left, RACSignal *right) {
 		return [left combineLatestWith:right];
 	}] setNameWithFormat:@"+combineLatest: %@", signals];
 }
 
+/// 多个信号联合 然后再reduceEach降维
 + (RACSignal *)combineLatest:(id<NSFastEnumeration>)signals reduce:(id (^)())reduceBlock {
 	NSCParameterAssert(reduceBlock != nil);
 
@@ -464,6 +496,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		setNameWithFormat:@"[%@] -merge: %@", self.name, signal];
 }
 
+/// 订阅每一个信号 直到所有信号都complete或者任意一个error  订阅才结束
 + (RACSignal *)merge:(id<NSFastEnumeration>)signals {
 	NSMutableArray *copiedSignals = [[NSMutableArray alloc] init];
 	for (RACSignal *signal in signals) {
@@ -483,6 +516,10 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		setNameWithFormat:@"+merge: %@", copiedSignals];
 }
 
+/// self必须是信号的信号
+/// 订阅self发出的信号 但是上限是maxConcurrent
+/// maxConcurrent == 0 无限制
+/// 所有信号都complete才结束
 - (RACSignal *)flatten:(NSUInteger)maxConcurrent {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		RACCompoundDisposable *compoundDisposable = [[RACCompoundDisposable alloc] init];
@@ -490,6 +527,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		// Contains disposables for the currently active subscriptions.
 		//
 		// This should only be used while synchronized on `subscriber`.
+        // 用来计算数量
 		NSMutableArray *activeDisposables = [[NSMutableArray alloc] initWithCapacity:maxConcurrent];
 
 		// Whether the signal-of-signals has completed yet.
@@ -504,8 +542,9 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		__weak __block void (^recur)(RACSignal *);
 
 		// Sends completed to the subscriber if all signals are finished.
-		//
+		// 线程安全
 		// This should only be used while synchronized on `subscriber`.
+        // 所有next生成的信号都complete之后才结束
 		void (^completeIfAllowed)(void) = ^{
 			if (selfCompleted && activeDisposables.count == 0) {
 				[subscriber sendCompleted];
@@ -521,6 +560,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		// This array should only be used while synchronized on `subscriber`.
 		NSMutableArray *queuedSignals = [NSMutableArray array];
 
+        // 订阅发出的信号
 		recur = subscribeToSignal = ^(RACSignal *signal) {
 			RACSerialDisposable *serialDisposable = [[RACSerialDisposable alloc] init];
 
@@ -549,7 +589,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 					nextSignal = queuedSignals[0];
 					[queuedSignals removeObjectAtIndex:0];
 				}
-
+                // 一个信号结束 订阅订阅另一个排队的信号
 				subscribeToSignal(nextSignal);
 			}];
 		};
@@ -560,6 +600,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 			NSCAssert([signal isKindOfClass:RACSignal.class], @"Expected a RACSignal, got %@", signal);
 
 			@synchronized (subscriber) {
+                // 超过数量 排队然后返回
 				if (maxConcurrent > 0 && activeDisposables.count >= maxConcurrent) {
 					[queuedSignals addObject:signal];
 
@@ -568,7 +609,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 					return;
 				}
 			}
-
+            // 数量未到达 直接订阅
 			subscribeToSignal(signal);
 		} error:^(NSError *error) {
 			[subscriber sendError:error];
@@ -583,6 +624,8 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -flatten: %lu", self.name, (unsigned long)maxConcurrent];
 }
 
+/// 忽略原始信号的所有值 除error之外
+/// 原始信号结束后订阅block生成的信号
 - (RACSignal *)then:(RACSignal * (^)(void))block {
 	NSCParameterAssert(block != nil);
 
@@ -592,10 +635,15 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		setNameWithFormat:@"[%@] -then:", self.name];
 }
 
+/// self是信号的信号
+/// 发出的第一个next被订阅 然后第二个next会等第一个next先complete 以此类推
+/// @see concat:
 - (RACSignal *)concat {
 	return [[self flatten:1] setNameWithFormat:@"[%@] -concat", self.name];
 }
 
+/// startFactory提供累积计算初始值
+/// 返回一个新信号 每次订阅都会调用aggregateWithStart:reduce:创建一个新信号
 - (RACSignal *)aggregateWithStartFactory:(id (^)(void))startFactory reduce:(id (^)(id running, id next))reduceBlock {
 	NSCParameterAssert(startFactory != NULL);
 	NSCParameterAssert(reduceBlock != NULL);
@@ -605,6 +653,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -aggregateWithStartFactory:reduce:", self.name];
 }
 
+/// -aggregateWithStart:reduceWithIndex:类似
 - (RACSignal *)aggregateWithStart:(id)start reduce:(id (^)(id running, id next))reduceBlock {
 	return [[self
 		aggregateWithStart:start
@@ -614,6 +663,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		setNameWithFormat:@"[%@] -aggregateWithStart: %@ reduce:", self.name, [start rac_description]];
 }
 
+/// 累积计算值 然后只取最后的结果
 - (RACSignal *)aggregateWithStart:(id)start reduceWithIndex:(id (^)(id, id, NSUInteger))reduceBlock {
 	return [[[[self
 		scanWithStart:start reduceWithIndex:reduceBlock]
@@ -622,10 +672,12 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		setNameWithFormat:@"[%@] -aggregateWithStart: %@ reduceWithIndex:", self.name, [start rac_description]];
 }
 
+
+/// 订阅原始信号 然后将每个next值 [object setValue:x ?: nilValue forKeyPath:keyPath];
+
 - (RACDisposable *)setKeyPath:(NSString *)keyPath onObject:(NSObject *)object {
 	return [self setKeyPath:keyPath onObject:object nilValue:nil];
 }
-
 - (RACDisposable *)setKeyPath:(NSString *)keyPath onObject:(NSObject *)object nilValue:(id)nilValue {
 	NSCParameterAssert(keyPath != nil);
 	NSCParameterAssert(object != nil);
@@ -709,6 +761,9 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	return [[RACSignal interval:interval onScheduler:scheduler withLeeway:0.0] setNameWithFormat:@"+interval: %f onScheduler: %@", (double)interval, scheduler];
 }
 
+/// scheduler不能为nil或者RACScheduler.immediateScheduler
+/// 每隔interval后发送一个[NSDate date]
+/// leeway最大的允许延迟发送时间
 + (RACSignal *)interval:(NSTimeInterval)interval onScheduler:(RACScheduler *)scheduler withLeeway:(NSTimeInterval)leeway {
 	NSCParameterAssert(scheduler != nil);
 	NSCParameterAssert(scheduler != RACScheduler.immediateScheduler);
@@ -720,6 +775,8 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"+interval: %f onScheduler: %@ withLeeway: %f", (double)interval, scheduler, (double)leeway];
 }
 
+/// 返回一个新的信号 订阅该信号的同时 内部也会订阅signalTrigger
+/// 当收到signalTrigger的complete或者next时 结束订阅并发送complete
 - (RACSignal *)takeUntil:(RACSignal *)signalTrigger {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		RACCompoundDisposable *disposable = [RACCompoundDisposable compoundDisposable];
@@ -753,6 +810,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -takeUntil: %@", self.name, signalTrigger];
 }
 
+/// 订阅原始信号 直到replacement发出任何值 如果原始信号complete则无限等待replacement发出值
 - (RACSignal *)takeUntilReplacement:(RACSignal *)replacement {
 	return [RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		RACSerialDisposable *selfDisposable = [[RACSerialDisposable alloc] init];
@@ -781,6 +839,9 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}];
 }
 
+/// self是信号的信号
+/// RACMulticastConnection实现多个订阅者共享一次订阅 因为takeUntil内部会订阅[connection.signal concat:[RACSignal never]]
+/// 返回一个新的信号 订阅该信号后会订阅第一个发出的信号 然后一旦发出下一个新的信号值则停止上一个信号的接收
 - (RACSignal *)switchToLatest {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		RACMulticastConnection *connection = [self publish];
@@ -788,9 +849,9 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		RACDisposable *subscriptionDisposable = [[connection.signal
 			flattenMap:^(RACSignal *x) {
 				NSCAssert(x == nil || [x isKindOfClass:RACSignal.class], @"-switchToLatest requires that the source signal (%@) send signals. Instead we got: %@", self, x);
-
 				// -concat:[RACSignal never] prevents completion of the receiver from
 				// prematurely terminating the inner signal.
+                // takeUntil收到complete也会触发 所以用[RACSignal never]来避免最后发出的信号因原始信号结束而结束
 				return [x takeUntil:[connection.signal concat:[RACSignal never]]];
 			}]
 			subscribe:subscriber];
@@ -803,6 +864,10 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -switchToLatest", self.name];
 }
 
+
+/// 1.cases是信号的字典
+/// 2.map中取signal发出key 然后取cases[key] 如果cases[key]为nil 则用defaultSignal
+/// 通过1、2 将signal转为信号的信号 然后switchToLatest
 + (RACSignal *)switch:(RACSignal *)signal cases:(NSDictionary *)cases default:(RACSignal *)defaultSignal {
 	NSCParameterAssert(signal != nil);
 	NSCParameterAssert(cases != nil);
@@ -830,6 +895,9 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		setNameWithFormat:@"+switch: %@ cases: %@ default: %@", signal, cases, defaultSignal];
 }
 
+/// boolSignal每发出一个值 判断其布尔值 根据真假返回trueSignal或者falseSignal
+/// map之后是信号的信号 然后switchToLatest
+/// 根据每次boolSignal发出的值切换订阅trueSignal或者falseSignal
 + (RACSignal *)if:(RACSignal *)boolSignal then:(RACSignal *)trueSignal else:(RACSignal *)falseSignal {
 	NSCParameterAssert(boolSignal != nil);
 	NSCParameterAssert(trueSignal != nil);
@@ -845,6 +913,9 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		setNameWithFormat:@"+if: %@ then: %@ else: %@", boolSignal, trueSignal, falseSignal];
 }
 
+
+/// 下面几个方法 因为会等待信号结束 所以注意咯。。。
+
 - (id)first {
 	return [self firstOrDefault:nil];
 }
@@ -853,6 +924,8 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	return [self firstOrDefault:defaultValue success:NULL error:NULL];
 }
 
+/// 取第一个next 无next则返回defaultValue
+/// 这里会一直等待 直到收到next complete error其中一个
 - (id)firstOrDefault:(id)defaultValue success:(BOOL *)success error:(NSError **)error {
 	NSCondition *condition = [[NSCondition alloc] init];
 	condition.name = [NSString stringWithFormat:@"[%@] -firstOrDefault: %@ success:error:", self.name, defaultValue];
@@ -871,6 +944,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		localSuccess = YES;
 
 		done = YES;
+        // broadcast唤醒所有等待线程
 		[condition broadcast];
 		[condition unlock];
 	} error:^(NSError *e) {
@@ -896,6 +970,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}];
 
 	[condition lock];
+    // 一直等待结束
 	while (!done) {
 		[condition wait];
 	}
@@ -907,6 +982,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	return value;
 }
 
+/// 等待直到complete或者error
 - (BOOL)waitUntilCompleted:(NSError **)error {
 	BOOL success = NO;
 
@@ -918,6 +994,11 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	return success;
 }
 
+/// 这是个类方法 返回一个信号R R被订阅的时候订阅block返回的信号N
+/// 只有被订阅的时候才调用block
+/// initially 使用了这个方法 来保证信号每次被订阅都会执行一个block
+/// then 使用这个方法来创建新的信号
+/// replayLazily也使用了这个方法来延迟connect
 + (RACSignal *)defer:(RACSignal * (^)(void))block {
 	NSCParameterAssert(block != NULL);
 
@@ -926,26 +1007,32 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"+defer:"];
 }
 
+/// 将信号的组成数组
 - (NSArray *)toArray {
 	return [[[self collect] first] copy];
 }
 
+/// RACSignalSequence -> RACSequence -> RACStream
 - (RACSequence *)sequence {
 	return [[RACSignalSequence sequenceWithSignal:self] setNameWithFormat:@"[%@] -sequence", self.name];
 }
 
+/// 创建一个subject并multicast
 - (RACMulticastConnection *)publish {
 	RACSubject *subject = [[RACSubject subject] setNameWithFormat:@"[%@] -publish", self.name];
 	RACMulticastConnection *connection = [self multicast:subject];
 	return connection;
 }
 
+/// 实现所有订阅者共享一次订阅 防止订阅时产生的副作用发生多次 subject
 - (RACMulticastConnection *)multicast:(RACSubject *)subject {
 	[subject setNameWithFormat:@"[%@] -multicast: %@", self.name, subject.name];
 	RACMulticastConnection *connection = [[RACMulticastConnection alloc] initWithSourceSignal:self subject:subject];
 	return connection;
 }
 
+/// multicast -> connect 然后返回的signal其实就是subject
+/// replay capacity无限制
 - (RACSignal *)replay {
 	RACReplaySubject *subject = [[RACReplaySubject subject] setNameWithFormat:@"[%@] -replay", self.name];
 
@@ -955,6 +1042,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	return connection.signal;
 }
 
+/// 同上 不过 capacity为1
 - (RACSignal *)replayLast {
 	RACReplaySubject *subject = [[RACReplaySubject replaySubjectWithCapacity:1] setNameWithFormat:@"[%@] -replayLast", self.name];
 
@@ -964,6 +1052,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	return connection.signal;
 }
 
+/// 订阅的时候才connect
 - (RACSignal *)replayLazily {
 	RACMulticastConnection *connection = [self multicast:[RACReplaySubject subject]];
 	return [[RACSignal
@@ -974,6 +1063,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		setNameWithFormat:@"[%@] -replayLazily", self.name];
 }
 
+/// interval时间内信号必须结束 否则发送error
 - (RACSignal *)timeout:(NSTimeInterval)interval onScheduler:(RACScheduler *)scheduler {
 	NSCParameterAssert(scheduler != nil);
 	NSCParameterAssert(scheduler != RACScheduler.immediateScheduler);
@@ -1003,8 +1093,14 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -timeout: %f onScheduler: %@", self.name, (double)interval, scheduler];
 }
 
+/// 返回一个信号 这个信号的值传递都在scheduler中进行
+/// 订阅信号即订阅原信号 并将原信号的值在scheduler中发送
+/// 值的传递在scheduler中 副作用在原线程
 - (RACSignal *)deliverOn:(RACScheduler *)scheduler {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
+        // deliverOn:RACSubscriber.subscriptionScheduler
+        // 新信号的订阅过程将会在RACSubscriber.subscriptionScheduler中执行
+        // 旧信号的didSubscribe又会在RACSubscriber.subscriptionScheduler中执行
 		return [self subscribeNext:^(id x) {
 			[scheduler schedule:^{
 				[subscriber sendNext:x];
@@ -1021,6 +1117,9 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -deliverOn: %@", self.name, scheduler];
 }
 
+/// 原信号的订阅过程在scheduler中
+/// 原信号的副作用也在scheduler中 因为RACSubscriber.subscriptionScheduler中会马上执行
+/// 值的传递也在scheduler中
 - (RACSignal *)subscribeOn:(RACScheduler *)scheduler {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		RACCompoundDisposable *disposable = [RACCompoundDisposable compoundDisposable];
@@ -1036,6 +1135,8 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -subscribeOn: %@", self.name, scheduler];
 }
 
+/// 返回新的信号
+/// 新信号的值将在主线程发送
 - (RACSignal *)deliverOnMainThread {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		__block volatile int32_t queueLength = 0;
@@ -1069,11 +1170,15 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -deliverOnMainThread", self.name];
 }
 
+/// keyBlock返回值对应的key 根据这个key进行分组
+/// transformBlock返回next对应的值 将这个转换后的值发给对应的分组
+/// 新的next对应的分组RACGroupedSignal会被立刻发送出去
 - (RACSignal *)groupBy:(id<NSCopying> (^)(id object))keyBlock transform:(id (^)(id object))transformBlock {
 	NSCParameterAssert(keyBlock != NULL);
 
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		NSMutableDictionary *groups = [NSMutableDictionary dictionary];
+        // RACGroupedSignal->RACSubject 数组
 		NSMutableArray *orderedGroups = [NSMutableArray array];
 
 		return [self subscribeNext:^(id x) {
@@ -1102,22 +1207,26 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -groupBy:transform:", self.name];
 }
 
+
 - (RACSignal *)groupBy:(id<NSCopying> (^)(id object))keyBlock {
 	return [[self groupBy:keyBlock transform:nil] setNameWithFormat:@"[%@] -groupBy:", self.name];
 }
 
+/// 如果原始信号发送任意next值 则发送一个@YES 否则@NO
 - (RACSignal *)any {
 	return [[self any:^(id x) {
 		return YES;
 	}] setNameWithFormat:@"[%@] -any", self.name];
 }
 
+/// 如果原始信号发送任意通过predicateBlock的next值 则发送一个@YES 否则@NO
 - (RACSignal *)any:(BOOL (^)(id object))predicateBlock {
 	NSCParameterAssert(predicateBlock != NULL);
 
 	return [[[self materialize] bind:^{
 		return ^(RACEvent *event, BOOL *stop) {
 			if (event.finished) {
+                // stop设为YES结束bind的订阅
 				*stop = YES;
 				return [RACSignal return:@NO];
 			}
@@ -1132,6 +1241,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -any:", self.name];
 }
 
+/// 所有值都必须通过predicateBlock 则发送一个@YES 否则@NO
 - (RACSignal *)all:(BOOL (^)(id object))predicateBlock {
 	NSCParameterAssert(predicateBlock != NULL);
 
@@ -1152,6 +1262,9 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -all:", self.name];
 }
 
+/// 一旦出现error会重试 最多retryCount次
+/// retryCount为0表示无次数限制
+/// 完成则不重复订阅
 - (RACSignal *)retry:(NSInteger)retryCount {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		__block NSInteger currentRetryCount = 0;
@@ -1176,10 +1289,15 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -retry: %lu", self.name, (unsigned long)retryCount];
 }
 
+/// 无限重试
 - (RACSignal *)retry {
 	return [[self retry:0] setNameWithFormat:@"[%@] -retry", self.name];
 }
 
+/// sample:样品 sampler:抽样者
+/// 当sampler发出next 才会发送样品的最后一个值
+/// 如果采样过于频繁 会取到重复的值
+/// 样品error或者complete则终止对抽样者的订阅
 - (RACSignal *)sample:(RACSignal *)sampler {
 	NSCParameterAssert(sampler != nil);
 
@@ -1228,12 +1346,15 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -sample: %@", self.name, sampler];
 }
 
+/// 过滤掉所有值 只会发生complete和error
 - (RACSignal *)ignoreValues {
 	return [[self filter:^(id _) {
 		return NO;
 	}] setNameWithFormat:@"[%@] -ignoreValues", self.name];
 }
 
+/// 将每个值转为RACEvent 包括error以及complete
+/// error以及complete都是[subscriber sendCompleted];
 - (RACSignal *)materialize {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
 		return [self subscribeNext:^(id x) {
@@ -1248,6 +1369,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -materialize", self.name];
 }
 
+/// 跟materialize相反
 - (RACSignal *)dematerialize {
 	return [[self bind:^{
 		return ^(RACEvent *event, BOOL *stop) {
@@ -1267,6 +1389,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -dematerialize", self.name];
 }
 
+/// 值类型必须是NSNumber map对应的布尔值取反
 - (RACSignal *)not {
 	return [[self map:^(NSNumber *value) {
 		NSCAssert([value isKindOfClass:NSNumber.class], @"-not must only be used on a signal of NSNumbers. Instead, got: %@", value);
@@ -1275,6 +1398,8 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -not", self.name];
 }
 
+/// 值类型必须是RACTuple tuple中每个值的布尔值都必须为YES则返回@YES 否则返回@NO
+/// 与
 - (RACSignal *)and {
 	return [[self map:^(RACTuple *tuple) {
 		NSCAssert([tuple isKindOfClass:RACTuple.class], @"-and must only be used on a signal of RACTuples of NSNumbers. Instead, received: %@", tuple);
@@ -1288,6 +1413,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -and", self.name];
 }
 
+/// 或
 - (RACSignal *)or {
 	return [[self map:^(RACTuple *tuple) {
 		NSCAssert([tuple isKindOfClass:RACTuple.class], @"-or must only be used on a signal of RACTuples of NSNumbers. Instead, received: %@", tuple);
@@ -1301,6 +1427,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	}] setNameWithFormat:@"[%@] -or", self.name];
 }
 
+/// 值类型必须是RACTuple 且tuple的第一个值必须是一个block 参数个数为其余值的个数
 - (RACSignal *)reduceApply {
 	return [[self map:^(RACTuple *tuple) {
 		NSCAssert([tuple isKindOfClass:RACTuple.class], @"-reduceApply must only be used on a signal of RACTuples. Instead, received: %@", tuple);

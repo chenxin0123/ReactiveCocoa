@@ -1,4 +1,4 @@
-//
+//!
 //  RACArraySequence.m
 //  ReactiveCocoa
 //
@@ -51,6 +51,9 @@
 
 #pragma mark NSFastEnumeration
 
+/// 关于这个方法的详情 看下面两个博客就够了
+/// https://www.bignerdranch.com/blog/fast-enumeration-part-2/
+/// http://www.cocoawithlove.com/2008/05/implementing-countbyenumeratingwithstat.html
 - (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(__unsafe_unretained id[])stackbuf count:(NSUInteger)len {
 	NSCParameterAssert(len > 0);
 

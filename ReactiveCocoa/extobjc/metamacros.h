@@ -48,6 +48,7 @@
 /**
  * Identical to #metamacro_foreach_cxt, except that no CONTEXT argument is
  * given. Only the index and current argument will thus be passed to MACRO.
+ * 对每个__VA_ARGS__的项执行MACRO(INDEX,ARG) 执行前调用SEP
  */
 #define metamacro_foreach(MACRO, SEP, ...) \
         metamacro_foreach_cxt(metamacro_foreach_iter, SEP, MACRO, __VA_ARGS__)
@@ -59,6 +60,7 @@
  * SEP.
  *
  * Inspired by P99: http://p99.gforge.inria.fr
+ * 对__VA_ARGS__中每项调用MACRO(INDEX,CONTEXT,__VA_ARGS__[INDEX]) 调用前执行SEP
  */
 #define metamacro_foreach_cxt(MACRO, SEP, CONTEXT, ...) \
         metamacro_concat(metamacro_foreach_cxt, metamacro_argcount(__VA_ARGS__))(MACRO, SEP, CONTEXT, __VA_ARGS__)

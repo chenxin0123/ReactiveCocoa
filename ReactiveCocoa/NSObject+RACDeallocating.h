@@ -1,4 +1,4 @@
-//
+//!
 //  NSObject+RACDeallocating.h
 //  ReactiveCocoa
 //
@@ -16,6 +16,7 @@
 
 /// The compound disposable which will be disposed of when the receiver is
 /// deallocated.
+/// 不要手动去dispose 这样会触发rac_willDeallocSignal
 @property (atomic, readonly, strong) RACCompoundDisposable *rac_deallocDisposable;
 
 /// Returns a signal that will complete immediately before the receiver is fully

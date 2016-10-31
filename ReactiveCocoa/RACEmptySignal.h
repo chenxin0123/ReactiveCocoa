@@ -1,4 +1,4 @@
-//
+//!
 //  RACEmptySignal.h
 //  ReactiveCocoa
 //
@@ -10,6 +10,7 @@
 
 // A private `RACSignal` subclasses that synchronously sends completed to any
 // subscribers.
+// 返回单例 直接向订阅者发送sendCompleted
 @interface RACEmptySignal : RACSignal
 
 + (RACSignal *)empty;

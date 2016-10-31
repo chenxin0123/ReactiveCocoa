@@ -1,4 +1,4 @@
-//
+//!
 //  RACGroupedSignal.h
 //  ReactiveCocoa
 //
@@ -9,6 +9,7 @@
 #import "RACSubject.h"
 
 /// A grouped signal is used by -[RACSignal groupBy:transform:].
+/// 只是比RACSubject多了个key
 @interface RACGroupedSignal : RACSubject
 
 /// The key shared by the group.

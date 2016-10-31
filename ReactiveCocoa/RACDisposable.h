@@ -1,4 +1,4 @@
-//
+//!
 //  RACDisposable.h
 //  ReactiveCocoa
 //
@@ -12,6 +12,7 @@
 
 /// A disposable encapsulates the work necessary to tear down and cleanup a
 /// subscription.
+/// 扮演清洁工的角色
 @interface RACDisposable : NSObject
 
 /// Whether the receiver has been disposed.

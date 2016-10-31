@@ -1,4 +1,4 @@
-//
+//!
 //  RACKVOProxy.m
 //  ReactiveCocoa
 //
@@ -8,6 +8,9 @@
 
 #import "RACKVOProxy.h"
 
+
+
+/// 单例 用一个NSMapTable来存放所有的observer和context 并且作为代理来统一管理KVO
 @interface RACKVOProxy()
 
 @property (strong, nonatomic, readonly) NSMapTable *trampolines;
@@ -38,6 +41,8 @@
 	return self;
 }
 
+/// [RACKVOProxy.sharedProxy addObserver:self forContext:(__bridge void *)self]
+
 - (void)addObserver:(__weak NSObject *)observer forContext:(void *)context {
 	NSValue *valueContext = [NSValue valueWithPointer:context];
 
@@ -54,6 +59,9 @@
 	});
 }
 
+/// addObserver的时候将context与observer关联
+/// 通过context取出observer
+/// 这里的observer是RACKVOTrampoline
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
 	NSValue *valueContext = [NSValue valueWithPointer:context];
 	__block NSObject *trueObserver;

@@ -1,4 +1,4 @@
-//
+//!
 //  RACSignalSequence.m
 //  ReactiveCocoa
 //
@@ -22,6 +22,8 @@
 
 #pragma mark Lifecycle
 
+/// 初始化一个RACReplaySubject来回放历史信号值 默认容量RACReplaySubjectUnlimitedCapacity
+/// 立即订阅signal
 + (RACSequence *)sequenceWithSignal:(RACSignal *)signal {
 	RACSignalSequence *seq = [[self alloc] init];
 
@@ -40,6 +42,7 @@
 
 #pragma mark RACSequence
 
+/// subject中的第一个next值
 - (id)head {
 	id value = [self.subject firstOrDefault:self];
 
@@ -50,6 +53,7 @@
 	}
 }
 
+/// 除第一个之外的其他值
 - (RACSequence *)tail {
 	RACSequence *sequence = [self.class sequenceWithSignal:[self.subject skip:1]];
 	sequence.name = self.name;
@@ -62,6 +66,7 @@
 
 #pragma mark NSObject
 
+/// 订阅subject 取得所有值然后马上退订
 - (NSString *)description {
 	// Synchronously accumulate the values that have been sent so far.
 	NSMutableArray *values = [NSMutableArray array];

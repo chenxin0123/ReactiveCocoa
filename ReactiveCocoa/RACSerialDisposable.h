@@ -1,4 +1,4 @@
-//
+//!
 //  RACSerialDisposable.h
 //  ReactiveCocoa
 //
@@ -10,6 +10,7 @@
 
 /// A disposable that contains exactly one other disposable and allows it to be
 /// swapped out atomically.
+/// 持有另一个disposable
 @interface RACSerialDisposable : RACDisposable
 
 /// The inner disposable managed by the serial disposable.
@@ -38,6 +39,7 @@
 ///                 will remain set to nil. This argument may be nil.
 ///
 /// Returns the previous value for the `disposable` property.
+/// 返回旧的 如果旧的已经disposed 则新的也完蛋
 - (RACDisposable *)swapInDisposable:(RACDisposable *)newDisposable;
 
 @end

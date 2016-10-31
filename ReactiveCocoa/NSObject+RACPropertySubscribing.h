@@ -1,4 +1,4 @@
-//
+//!
 //  NSObject+RACPropertySubscribing.h
 //  ReactiveCocoa
 //
@@ -46,6 +46,10 @@
 /// Returns a signal which sends the current value of the key path on
 /// subscription, then sends the new value every time it changes, and sends
 /// completed if self or observer is deallocated.
+/// 基于kVO
+/// 调用[TARGET rac_valuesForKeyPath:KEYPATH observer:self];
+/// 注意引用了self
+/// 订阅的时候立刻发送当前值
 #define RACObserve(TARGET, KEYPATH) \
 	({ \
 		_Pragma("clang diagnostic push") \
@@ -82,6 +86,7 @@
 
 @end
 
+/// RACAble(property) -> _RACAbleObject(self, property) RACAble(object, property) -> _RACAbleObject(object, property)
 #define RACAble(...) \
 	metamacro_if_eq(1, metamacro_argcount(__VA_ARGS__)) \
 		(_RACAbleObject(self, __VA_ARGS__)) \
