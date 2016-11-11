@@ -1,4 +1,4 @@
-//
+//!
 //  RACSubscriptingAssignmentTrampoline.h
 //  ReactiveCocoa
 //
@@ -37,6 +37,7 @@
 ///
 /// WARNING: Under certain conditions, use of this macro can be thread-unsafe.
 ///          See the documentation of -setKeyPath:onObject:nilValue:.
+/// 将目标的属性与一个信号的值绑定
 #define RAC(TARGET, ...) \
     metamacro_if_eq(1, metamacro_argcount(__VA_ARGS__)) \
         (RAC_(TARGET, __VA_ARGS__, nil)) \
@@ -49,6 +50,7 @@
 @interface RACSubscriptingAssignmentTrampoline : NSObject
 
 - (id)initWithTarget:(id)target nilValue:(id)nilValue;
+
 - (void)setObject:(RACSignal *)signal forKeyedSubscript:(NSString *)keyPath;
 
 @end

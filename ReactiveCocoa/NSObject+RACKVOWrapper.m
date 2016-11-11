@@ -17,8 +17,15 @@
 #import "RACSerialDisposable.h"
 
 @implementation NSObject (RACKVOWrapper)
-// son.school.name 会触发son son.school son.school.name 三次KVO
+
 // 这里使用了NSKeyValueObservingOptionPrior 不管你options里面有没有
+// son.school.name 会触发son son.school son.school.name 三次KVO
+// 每次KVO都用一个RACKVOTrampoline来封装
+// RACKVOTrampoline向RACKVOProxy注册
+// RACKVOProxy单例是真正KVO的observer 他根据context将收到的回调信息转发给注册的observer(也就是RACKVOTrampoline实例)
+// RACKVOTrampoline收到回调之后除了处理一些自己的逻辑比如son变了 会重新KVO son.school以及son.school以及son.school.name 回调用这里的block
+// block(id value, NSDictionary *change, BOOL causedByDealloc, BOOL affectedOnlyLastComponent/keyPathOnlyHasOneComponent)
+// observer可以为nil
 - (RACDisposable *)rac_observeKeyPath:(NSString *)keyPath options:(NSKeyValueObservingOptions)options observer:(__weak NSObject *)weakObserver block:(void (^)(id, NSDictionary *, BOOL, BOOL))block {
 	NSCParameterAssert(block != nil);
 	NSCParameterAssert(keyPath.rac_keyPathComponents.count > 0);

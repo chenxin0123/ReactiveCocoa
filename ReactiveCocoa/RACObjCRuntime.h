@@ -1,4 +1,4 @@
-//
+//!
 //  RACObjCRuntime.h
 //  ReactiveCocoa
 //
@@ -12,6 +12,7 @@
 @interface RACObjCRuntime : NSObject
 
 // Invokes objc_allocateClassPair(). Can be called from ARC code.
+// 创建一个新类
 + (Class)createClass:(const char *)className inheritingFromClass:(Class)superclass;
 
 @end

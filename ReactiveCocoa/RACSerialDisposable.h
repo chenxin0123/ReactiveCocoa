@@ -39,7 +39,7 @@
 ///                 will remain set to nil. This argument may be nil.
 ///
 /// Returns the previous value for the `disposable` property.
-/// 返回旧的 如果旧的已经disposed 则新的也完蛋
+/// 返回旧的 如果本身已经disposed 则新的也完蛋
 - (RACDisposable *)swapInDisposable:(RACDisposable *)newDisposable;
 
 @end

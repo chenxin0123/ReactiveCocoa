@@ -1,4 +1,4 @@
-//
+//!
 //  RACSubscriptingAssignmentTrampoline.m
 //  ReactiveCocoa
 //
@@ -35,7 +35,9 @@
 	return self;
 }
 
+/// []语法
 - (void)setObject:(RACSignal *)signal forKeyedSubscript:(NSString *)keyPath {
+    // 订阅了信号 然后对每个值 setValue:forKeyPath
 	[signal setKeyPath:keyPath onObject:self.target nilValue:self.nilValue];
 }
 

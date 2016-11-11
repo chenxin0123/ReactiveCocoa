@@ -217,6 +217,7 @@ errorOut:
     return NULL;
 }
 
+/// 返回对应的Method 不包含父类的
 Method rac_getImmediateInstanceMethod (Class aClass, SEL aSelector) {
     unsigned methodCount = 0;
     Method *methods = class_copyMethodList(aClass, &methodCount);

@@ -673,7 +673,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 }
 
 
-/// 订阅原始信号 然后将每个next值 [object setValue:x ?: nilValue forKeyPath:keyPath];
+/// 直接订阅原始信号 然后将每个next值 [object setValue:x ?: nilValue forKeyPath:keyPath];
 
 - (RACDisposable *)setKeyPath:(NSString *)keyPath onObject:(NSObject *)object {
 	return [self setKeyPath:keyPath onObject:object nilValue:nil];

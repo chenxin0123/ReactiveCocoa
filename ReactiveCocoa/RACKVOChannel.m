@@ -1,4 +1,4 @@
-//
+//!
 //  RACKVOChannel.m
 //  ReactiveCocoa
 //
@@ -28,11 +28,48 @@ static NSString * const RACKVOChannelDataDictionaryKey = @"RACKVOChannelKey";
 
 // A pointer to the owner of the data. Only use this for pointer comparison,
 // never as an object reference.
+// 指向+ (instancetype)dataForChannel:(RACKVOChannel *)channel;中的channel
 @property (nonatomic, assign) void *owner;
 
 + (instancetype)dataForChannel:(RACKVOChannel *)channel;
 
 @end
+
+
+/** 例子
+     RACChannelTerminal *channelA = RACChannelTo(self, valueA);
+     RACChannelTerminal *channelB = RACChannelTo(self, valueB);
+     [[channelA map:^id(NSString *value) {
+         if ([value isEqualToString:@"西"]) {
+             return @"东";
+         }
+         return value;
+     }] subscribe:channelB];
+     [[channelB map:^id(NSString *value) {
+         if ([value isEqualToString:@"左"]) {
+             return @"右";
+         }
+         return value;
+     }] subscribe:channelA];
+     [[RACObserve(self, valueA) filter:^BOOL(id value) {
+         return value ? YES : NO;
+     }] subscribeNext:^(NSString* x) {
+         NSLog(@"你向%@", x);
+     }];
+     [[RACObserve(self, valueB) filter:^BOOL(id value) {
+         return value ? YES : NO;
+     }] subscribeNext:^(NSString* x) {
+         NSLog(@"他向%@", x);
+     }];
+     self.valueA = @"西";
+     self.valueB = @"左";
+ 
+ 2015-08-15 20:14:46.544 Test[2440:99901] 你向西
+ 2015-08-15 20:14:46.544 Test[2440:99901] 他向东
+ 2015-08-15 20:14:46.545 Test[2440:99901] 他向左
+ 2015-08-15 20:14:46.545 Test[2440:99901] 你向右
+ 
+ */
 
 @interface RACKVOChannel ()
 
@@ -57,6 +94,7 @@ static NSString * const RACKVOChannelDataDictionaryKey = @"RACKVOChannelKey";
 
 #pragma mark Properties
 
+/// 返回对应的RACKVOChannelData 无则返回nil
 - (RACKVOChannelData *)currentThreadData {
 	NSMutableArray *dataArray = NSThread.currentThread.threadDictionary[RACKVOChannelDataDictionaryKey];
 
@@ -83,6 +121,7 @@ static NSString * const RACKVOChannelDataDictionaryKey = @"RACKVOChannelKey";
 	[self.leadingTerminal setNameWithFormat:@"[-initWithTarget: %@ keyPath: %@ nilValue: %@] -leadingTerminal", target, keyPath, nilValue];
 	[self.followingTerminal setNameWithFormat:@"[-initWithTarget: %@ keyPath: %@ nilValue: %@] -followingTerminal", target, keyPath, nilValue];
 
+    // 两端都结束
 	if (strongTarget == nil) {
 		[self.leadingTerminal sendCompleted];
 		return self;
@@ -93,15 +132,20 @@ static NSString * const RACKVOChannelDataDictionaryKey = @"RACKVOChannelKey";
 	//
 	// Intentionally capturing `self` strongly in the blocks below, so the
 	// channel object stays alive while observing.
+    // 观察keypath值的变化 发给leadingTerminal
 	RACDisposable *observationDisposable = [strongTarget rac_observeKeyPath:keyPath options:NSKeyValueObservingOptionInitial observer:nil block:^(id value, NSDictionary *change, BOOL causedByDealloc, BOOL affectedOnlyLastComponent) {
 		// If the change wasn't triggered by deallocation, only affects the last
 		// path component, and ignoreNextUpdate is set, then it was triggered by
 		// this channel and should not be forwarded.
+        // ignoreNextUpdate用来标志是否忽略下一次的变化
+        // 因为RACChannelTo将followingTerminal返回 followingTerminal订阅得到的值会引发target.keypath的值的变化 keypath的值的变化又会发给followingTerminal的订阅者 这是没有必要的
 		if (!causedByDealloc && affectedOnlyLastComponent && self.currentThreadData.ignoreNextUpdate) {
 			[self destroyCurrentThreadData];
 			return;
 		}
 
+        // KVO变化的值会被发给followingTerminal的订阅者
+        // RACChannelTo宏把followingTerminal暴露出来 这样只要订阅followingTerminal就能收到变化的值了
 		[self.leadingTerminal sendNext:value];
 	}];
 
@@ -111,6 +155,8 @@ static NSString * const RACKVOChannelDataDictionaryKey = @"RACKVOChannelKey";
 	NSString *lastKeyPathComponent = keyPathComponents.lastObject;
 
 	// Update the value of the property with the values received.
+    
+    
 	[[self.leadingTerminal
 		finally:^{
 			[observationDisposable dispose];
@@ -120,6 +166,8 @@ static NSString * const RACKVOChannelDataDictionaryKey = @"RACKVOChannelKey";
 			// channel can only update the value of a property on an object, and not
 			// update intermediate objects, it can only update the value of the whole
 			// key path if this object is not nil.
+            // 这里收到的是followingTerminal作为订阅者收到的值 赋给target属性
+            // target.son.school -> target.son target.son -> target
 			NSObject *object = (keyPathComponentsCount > 1 ? [self.target valueForKeyPath:keyPathByDeletingLastKeyPathComponent] : self.target);
 			if (object == nil) return;
 
@@ -140,8 +188,10 @@ static NSString * const RACKVOChannelDataDictionaryKey = @"RACKVOChannelKey";
 	// freely deallocate if we complete before then.
 	@weakify(self);
 
+    // 对象释放 结束这个管道
 	[strongTarget.rac_deallocDisposable addDisposable:[RACDisposable disposableWithBlock:^{
 		@strongify(self);
+        // 结束任意一端
 		[self.leadingTerminal sendCompleted];
 		self.target = nil;
 	}]];
@@ -149,6 +199,7 @@ static NSString * const RACKVOChannelDataDictionaryKey = @"RACKVOChannelKey";
 	return self;
 }
 
+/// 将self对应的RACKVOChannelData放入NSThread.currentThread.threadDictionary[RACKVOChannelDataDictionaryKey]
 - (void)createCurrentThreadData {
 	NSMutableArray *dataArray = NSThread.currentThread.threadDictionary[RACKVOChannelDataDictionaryKey];
 	if (dataArray == nil) {
@@ -165,6 +216,7 @@ static NSString * const RACKVOChannelDataDictionaryKey = @"RACKVOChannelKey";
 	[dataArray addObject:[RACKVOChannelData dataForChannel:self]];
 }
 
+/// 移除self对应的RACKVOChannelData
 - (void)destroyCurrentThreadData {
 	NSMutableArray *dataArray = NSThread.currentThread.threadDictionary[RACKVOChannelDataDictionaryKey];
 	NSUInteger index = [dataArray indexOfObjectPassingTest:^ BOOL (RACKVOChannelData *data, NSUInteger idx, BOOL *stop) {
@@ -190,8 +242,11 @@ static NSString * const RACKVOChannelDataDictionaryKey = @"RACKVOChannelKey";
 - (void)setObject:(RACChannelTerminal *)otherTerminal forKeyedSubscript:(NSString *)key {
 	NSCParameterAssert(otherTerminal != nil);
 
+    // 相当于给管道加一个口 保留原来的端的功能 只是原来的这个口被隐藏了
 	RACChannelTerminal *selfTerminal = [self objectForKeyedSubscript:key];
+    // 旧端会把收到的值发给另一端的订阅者 所以这里旧端订阅新端 新端值会发送给旧端 旧端再把值发给另一端的订阅者
 	[otherTerminal subscribe:selfTerminal];
+    // 另一端会把收到的值发给旧端的订阅者 所以这里新端订阅旧端 这样旧端收到另一端的值后就会将值发给新端 新端再发给自己的订阅者
 	[[selfTerminal skip:1] subscribe:otherTerminal];
 }
 

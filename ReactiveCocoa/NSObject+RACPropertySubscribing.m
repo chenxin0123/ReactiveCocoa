@@ -1,4 +1,4 @@
-//
+//!
 //  NSObject+RACPropertySubscribing.m
 //  ReactiveCocoa
 //
@@ -22,6 +22,7 @@
 @implementation NSObject (RACPropertySubscribing)
 
 /// NSKeyValueObservingOptionInitial 一订阅马上发送初始值
+/// value[0]是值 value[1]是KVO的change信息
 - (RACSignal *)rac_valuesForKeyPath:(NSString *)keyPath observer:(__weak NSObject *)observer {
 	return [[[self
 		rac_valuesAndChangesForKeyPath:keyPath options:NSKeyValueObservingOptionInitial observer:observer]

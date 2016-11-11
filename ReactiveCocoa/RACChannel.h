@@ -66,10 +66,7 @@
 /// terminals.
 ///
 /// Do not instantiate this class directly. Create a RACChannel instead.
-/// 表示管道的一端
-/// 一个RACChannelTerminal 既可以是订阅者也是信号
-/// 收到的值不会发给自己的订阅者 而是发给其他端的订阅者
-/// error complete 会被发给所有终端订阅者
+
 @interface RACChannelTerminal : RACSignal <RACSubscriber>
 
 - (id)init __attribute__((unavailable("Instantiate a RACChannel instead")));

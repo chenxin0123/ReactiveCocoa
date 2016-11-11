@@ -1,4 +1,4 @@
-//
+//!
 //  RACKVOChannel.h
 //  ReactiveCocoa
 //
@@ -51,12 +51,14 @@
 ///  side.
 ///  RACChannelTo(view, objectProperty) = RACChannelTo(model, objectProperty);
 ///  RACChannelTo(view, integerProperty, @2) = RACChannelTo(model, integerProperty, @10);
+///
 #define RACChannelTo(TARGET, ...) \
     metamacro_if_eq(1, metamacro_argcount(__VA_ARGS__)) \
         (RACChannelTo_(TARGET, __VA_ARGS__, nil)) \
         (RACChannelTo_(TARGET, __VA_ARGS__))
 
 /// Do not use this directly. Use the RACChannelTo macro above.
+/// 创建了一个RACKVOChannel并获取其followingTerminal属性
 #define RACChannelTo_(TARGET, KEYPATH, NILVALUE) \
     [[RACKVOChannel alloc] initWithTarget:(TARGET) keyPath:@keypath(TARGET, KEYPATH) nilValue:(NILVALUE)][@keypath(RACKVOChannel.new, followingTerminal)]
 

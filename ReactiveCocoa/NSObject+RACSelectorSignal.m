@@ -39,28 +39,40 @@ static NSMutableSet *swizzledClasses() {
 
 @implementation NSObject (RACSelectorSignal)
 
+/// rac_signalForSelector的selector都会到这里来
+/// 先找到对应的subject
+/// 返回YES说明forwardInvocation到此为止 成功
+/// 返回NO的话需要调用默认forwardInvocation实现
 static BOOL RACForwardInvocation(id self, NSInvocation *invocation) {
 	SEL aliasSelector = RACAliasForSelector(invocation.selector);
 	RACSubject *subject = objc_getAssociatedObject(self, aliasSelector);
 
 	Class class = object_getClass(invocation.target);
+    // rac_signalForSelector的时候如果已经实现对应方法 则将其实现给aliasSelector
+    // respondsToAlias说明有旧的实现 先调用原有的实现
 	BOOL respondsToAlias = [class instancesRespondToSelector:aliasSelector];
 	if (respondsToAlias) {
 		invocation.selector = aliasSelector;
 		[invocation invoke];
 	}
-
+    
+    /// 没有subject 说明是普通的消息转发跟RAC无关 返回一般是NO
 	if (subject == nil) return respondsToAlias;
 
+    // 这句话触发了rac_signalForSelector的block的调用
 	[subject sendNext:invocation.rac_argumentsTuple];
 	return YES;
 }
 
+/// 这里的class可能是RAC生成的子类 也可能是KVO生成的子类
+/// rac_signalForSelector的实现都指向了forwardInvocation:
+/// 所以在这里做处理
 static void RACSwizzleForwardInvocation(Class class) {
 	SEL forwardInvocationSEL = @selector(forwardInvocation:);
 	Method forwardInvocationMethod = class_getInstanceMethod(class, forwardInvocationSEL);
 
 	// Preserve any existing implementation of -forwardInvocation:.
+    // 已有的实现
 	void (*originalForwardInvocation)(id, SEL, NSInvocation *) = NULL;
 	if (forwardInvocationMethod != NULL) {
 		originalForwardInvocation = (__typeof__(originalForwardInvocation))method_getImplementation(forwardInvocationMethod);
@@ -75,10 +87,14 @@ static void RACSwizzleForwardInvocation(Class class) {
 	// invoke any existing implementation of -forwardInvocation:. If there
 	// was no existing implementation, throw an unrecognized selector
 	// exception.
+    // rac_signalForSelector的selector都会到这里来
 	id newForwardInvocation = ^(id self, NSInvocation *invocation) {
+        // matche
 		BOOL matched = RACForwardInvocation(self, invocation);
 		if (matched) return;
 
+        // 到这里matched为NO 说明RACForwardInvocation调用失败
+        // 调用原来的实现 如果原来没有实现则调用doesNotRecognizeSelector
 		if (originalForwardInvocation == NULL) {
 			[self doesNotRecognizeSelector:invocation.selector];
 		} else {
@@ -86,9 +102,10 @@ static void RACSwizzleForwardInvocation(Class class) {
 		}
 	};
 
-	class_replaceMethod(class, forwardInvocationSEL, imp_implementationWithBlock(newForwardInvocation), "v@:@");
+	class_replaceMethod(class, forwardInvocationSEL, imp_implementationWithBlock(newForwardInvocation), "v@:@");// id sel anInvocation
 }
 
+/// respondsToSelector的实现 主要处理对_objc_msgForward的判断
 static void RACSwizzleRespondsToSelector(Class class) {
 	SEL respondsToSelectorSEL = @selector(respondsToSelector:);
 
@@ -106,6 +123,9 @@ static void RACSwizzleRespondsToSelector(Class class) {
 	id newRespondsToSelector = ^ BOOL (id self, SEL selector) {
 		Method method = rac_getImmediateInstanceMethod(class, selector);
 
+        // _objc_msgForward_stret 不支持结构体
+        // NSObjectRACSignalForSelector中使对应的selector的实现直接指向_objc_msgForward
+        // 所以这里判断如果是_objc_msgForward又有一个signal(subject)就返回YES 否则使用原有实现
 		if (method != NULL && method_getImplementation(method) == _objc_msgForward) {
 			SEL aliasSelector = RACAliasForSelector(selector);
 			if (objc_getAssociatedObject(self, aliasSelector) != nil) return YES;
@@ -117,6 +137,8 @@ static void RACSwizzleRespondsToSelector(Class class) {
 	class_replaceMethod(class, respondsToSelectorSEL, imp_implementationWithBlock(newRespondsToSelector), method_getTypeEncoding(respondsToSelectorMethod));
 }
 
+/// 让class的实例的class方法返回statedClass KVO就是这么做的
+/// class是statedClass的子类
 static void RACSwizzleGetClass(Class class, Class statedClass) {
 	SEL selector = @selector(class);
 	Method method = class_getInstanceMethod(class, selector);
@@ -133,6 +155,8 @@ static void RACSwizzleMethodSignatureForSelector(Class class) {
 		Class actualClass = object_getClass(self);
 		Method method = class_getInstanceMethod(actualClass, selector);
 		if (method == NULL) {
+            // 如果是RAC添加的方法 这里method不会为空
+            // objc_msgSendSuper相当于[super xx] 这里的class是子类
 			// Messages that the original class dynamically implements fall
 			// here.
 			//
@@ -172,13 +196,18 @@ static void RACCheckTypeEncoding(const char *typeEncoding) {
 #endif // !NS_BLOCK_ASSERTIONS
 }
 
+/// 返回的实际上是一个RACSubject
+/// 调用selector会经过forwardInvocation找到对应的subject然后将参数打包成tuple 然后sendNext
 static RACSignal *NSObjectRACSignalForSelector(NSObject *self, SEL selector, Protocol *protocol) {
+    // selector->rac_alias_
 	SEL aliasSelector = RACAliasForSelector(selector);
 
 	@synchronized (self) {
+        // 已经存在 返回
 		RACSubject *subject = objc_getAssociatedObject(self, aliasSelector);
 		if (subject != nil) return subject;
 
+        // 这里返回的是class的子类
 		Class class = RACSwizzleClass(self);
 		NSCAssert(class != nil, @"Could not swizzle class of %@", self);
 
@@ -188,9 +217,12 @@ static RACSignal *NSObjectRACSignalForSelector(NSObject *self, SEL selector, Pro
 		[self.rac_deallocDisposable addDisposable:[RACDisposable disposableWithBlock:^{
 			[subject sendCompleted];
 		}]];
-
+        
+        // 是否已有实现 包括父类的实现
 		Method targetMethod = class_getInstanceMethod(class, selector);
+        
 		if (targetMethod == NULL) {
+            // 包括父类 暂无对应的实现
 			const char *typeEncoding;
 			if (protocol == NULL) {
 				typeEncoding = RACSignatureForUndefinedSelector(selector);
@@ -210,6 +242,7 @@ static RACSignal *NSObjectRACSignalForSelector(NSObject *self, SEL selector, Pro
 
 			RACCheckTypeEncoding(typeEncoding);
 
+            // 使方法调用直接进入消息转发
 			// Define the selector to call -forwardInvocation:.
 			if (!class_addMethod(class, selector, _objc_msgForward, typeEncoding)) {
 				NSDictionary *userInfo = @{
@@ -220,6 +253,7 @@ static RACSignal *NSObjectRACSignalForSelector(NSObject *self, SEL selector, Pro
 				return [RACSignal error:[NSError errorWithDomain:RACSelectorSignalErrorDomain code:RACSelectorSignalErrorMethodSwizzlingRace userInfo:userInfo]];
 			}
 		} else if (method_getImplementation(targetMethod) != _objc_msgForward) {
+            // 包括父类 已有实现 交换实现 rac_alias_sel对应的实现指向旧的实现
 			// Make a method alias for the existing method implementation.
 			const char *typeEncoding = method_getTypeEncoding(targetMethod);
 
@@ -236,6 +270,7 @@ static RACSignal *NSObjectRACSignalForSelector(NSObject *self, SEL selector, Pro
 	}
 }
 
+/// 返回一个SEL originalSelector -> rac_alias_originalSelector
 static SEL RACAliasForSelector(SEL originalSelector) {
 	NSString *selectorName = NSStringFromSelector(originalSelector);
 	return NSSelectorFromString([RACSignalForSelectorAliasPrefix stringByAppendingString:selectorName]);
@@ -253,7 +288,10 @@ static const char *RACSignatureForUndefinedSelector(SEL selector) {
 	return signature.UTF8String;
 }
 
+/// 返回 objc_getAssociatedObject(self, RACSubclassAssociationKey);
+/// 动态创建的原类的子类
 static Class RACSwizzleClass(NSObject *self) {
+    // 比如KVO会生成一个子类然后重写class方法 所以statedClass和baseClass可能不同
 	Class statedClass = self.class;
 	Class baseClass = object_getClass(self);
 
@@ -261,11 +299,15 @@ static Class RACSwizzleClass(NSObject *self) {
 	// It's stored as an associated object on every instance that's already
 	// been swizzled, so that even if something else swizzles the class of
 	// this instance, we can still access the RAC generated subclass.
+    // 同一个类swizzle一次就够了 所以这里直接就返回
 	Class knownDynamicSubclass = objc_getAssociatedObject(self, RACSubclassAssociationKey);
 	if (knownDynamicSubclass != Nil) return knownDynamicSubclass;
 
+    // 真实类名
 	NSString *className = NSStringFromClass(baseClass);
 
+    // 如果KVO已经动态改变了子类的类型 我们就不应该再去改变
+    // 这里也可能是痛一个类的不同实例
 	if (statedClass != baseClass) {
 		// If the class is already lying about what it is, it's probably a KVO
 		// dynamic subclass or something else that we shouldn't subclass
@@ -277,12 +319,17 @@ static Class RACSwizzleClass(NSObject *self) {
 		//
 		// Additionally, swizzle -respondsToSelector: because the default
 		// implementation may be ignorant of methods added to this class.
+        // xx xx_RACSelectorSignal NSKVONotifying_xx_RACSelectorSignal
+        // xx NSKVONotifying_xx_RACSelectorSignal
 		@synchronized (swizzledClasses()) {
 			if (![swizzledClasses() containsObject:className]) {
 				RACSwizzleForwardInvocation(baseClass);
 				RACSwizzleRespondsToSelector(baseClass);
+                // -class 这个没必要吧 已经是这个效果了
 				RACSwizzleGetClass(baseClass, statedClass);
+                // metaClass +class
 				RACSwizzleGetClass(object_getClass(baseClass), statedClass);
+                
 				RACSwizzleMethodSignatureForSelector(baseClass);
 				[swizzledClasses() addObject:className];
 			}
@@ -291,6 +338,8 @@ static Class RACSwizzleClass(NSObject *self) {
 		return baseClass;
 	}
 
+    // 运行到这里 statedClass跟baseClass相同
+    // 新类的类名 xx_RACSelectorSignal
 	const char *subclassName = [className stringByAppendingString:RACSubclassSuffix].UTF8String;
 	Class subclass = objc_getClass(subclassName);
 
@@ -309,10 +358,12 @@ static Class RACSwizzleClass(NSObject *self) {
 		objc_registerClassPair(subclass);
 	}
 
+    //将这个object的isa指向新创建的subclass
 	object_setClass(self, subclass);
 	objc_setAssociatedObject(self, RACSubclassAssociationKey, subclass, OBJC_ASSOCIATION_ASSIGN);
 	return subclass;
 }
+
 
 - (RACSignal *)rac_signalForSelector:(SEL)selector {
 	NSCParameterAssert(selector != NULL);
