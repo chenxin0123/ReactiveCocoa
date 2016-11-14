@@ -1,4 +1,4 @@
-//
+//!
 //  NSObject+RACSelectorSignal.m
 //  ReactiveCocoa
 //
@@ -211,6 +211,7 @@ static RACSignal *NSObjectRACSignalForSelector(NSObject *self, SEL selector, Pro
 		Class class = RACSwizzleClass(self);
 		NSCAssert(class != nil, @"Could not swizzle class of %@", self);
 
+        // 放一个对应的subject 一切的努力都是为了向这个subject发送next
 		subject = [[RACSubject subject] setNameWithFormat:@"%@ -rac_signalForSelector: %s", self.rac_description, sel_getName(selector)];
 		objc_setAssociatedObject(self, aliasSelector, subject, OBJC_ASSOCIATION_RETAIN);
 
@@ -221,6 +222,7 @@ static RACSignal *NSObjectRACSignalForSelector(NSObject *self, SEL selector, Pro
         // 是否已有实现 包括父类的实现
 		Method targetMethod = class_getInstanceMethod(class, selector);
         
+        // 如果指定了protocol 则找到的方法的typeEncoding更精确 否则默认返回值为v 参数类型为@
 		if (targetMethod == NULL) {
             // 包括父类 暂无对应的实现
 			const char *typeEncoding;
@@ -253,7 +255,7 @@ static RACSignal *NSObjectRACSignalForSelector(NSObject *self, SEL selector, Pro
 				return [RACSignal error:[NSError errorWithDomain:RACSelectorSignalErrorDomain code:RACSelectorSignalErrorMethodSwizzlingRace userInfo:userInfo]];
 			}
 		} else if (method_getImplementation(targetMethod) != _objc_msgForward) {
-            // 包括父类 已有实现 交换实现 rac_alias_sel对应的实现指向旧的实现
+            // 包括父类 已有实现 交换实现 rac_alias_sel对应的实现指向旧的实现 sel的实现指向_objc_msgForward
 			// Make a method alias for the existing method implementation.
 			const char *typeEncoding = method_getTypeEncoding(targetMethod);
 
@@ -276,6 +278,7 @@ static SEL RACAliasForSelector(SEL originalSelector) {
 	return NSSelectorFromString([RACSignalForSelectorAliasPrefix stringByAppendingString:selectorName]);
 }
 
+/// 返回方法的typeEncoding 方法参数只能是id类型
 static const char *RACSignatureForUndefinedSelector(SEL selector) {
 	const char *name = sel_getName(selector);
 	NSMutableString *signature = [NSMutableString stringWithString:@"v@:"];
@@ -289,7 +292,7 @@ static const char *RACSignatureForUndefinedSelector(SEL selector) {
 }
 
 /// 返回 objc_getAssociatedObject(self, RACSubclassAssociationKey);
-/// 动态创建的原类的子类
+/// 动态创建的原类的子类 可能是rac创建的也可能是KVO创建的
 static Class RACSwizzleClass(NSObject *self) {
     // 比如KVO会生成一个子类然后重写class方法 所以statedClass和baseClass可能不同
 	Class statedClass = self.class;
@@ -306,8 +309,7 @@ static Class RACSwizzleClass(NSObject *self) {
     // 真实类名
 	NSString *className = NSStringFromClass(baseClass);
 
-    // 如果KVO已经动态改变了子类的类型 我们就不应该再去改变
-    // 这里也可能是痛一个类的不同实例
+    // 如果KVO已经动态改变了子类的类型 我们就不用再去生成一个子类
 	if (statedClass != baseClass) {
 		// If the class is already lying about what it is, it's probably a KVO
 		// dynamic subclass or something else that we shouldn't subclass
@@ -364,7 +366,9 @@ static Class RACSwizzleClass(NSObject *self) {
 	return subclass;
 }
 
-
+/// 如果已有实现 则原有实现会先调用 只是添加了多余的实现 返回值并不会改变
+/// 如果无实现 参数类型默认id类型 返回值默认void
+/// 指定protocol只是能更精确的获取参数类型以及返回值
 - (RACSignal *)rac_signalForSelector:(SEL)selector {
 	NSCParameterAssert(selector != NULL);
 

@@ -1,4 +1,4 @@
-//
+//!
 //  NSInvocation+RACTypeParsing.m
 //  ReactiveCocoa
 //
@@ -26,7 +26,7 @@
 		argType++;
 	}
 
-	if (strcmp(argType, @encode(id)) == 0 || strcmp(argType, @encode(Class)) == 0) {
+	if (strcmp(argType, @encode(id)) == 0 || strcmp(argType, @encode(Class)) == 0) {// @ #
 		[self setArgument:&object atIndex:(NSInteger)index];
 	} else if (strcmp(argType, @encode(char)) == 0) {
 		PULL_AND_SET(char, charValue);

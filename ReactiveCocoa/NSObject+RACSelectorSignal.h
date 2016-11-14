@@ -1,4 +1,4 @@
-//
+//!
 //  NSObject+RACSelectorSignal.h
 //  ReactiveCocoa
 //
