@@ -1,4 +1,4 @@
-//
+//!
 //  UICollectionReusableView+RACSignalSupport.m
 //  ReactiveCocoa
 //

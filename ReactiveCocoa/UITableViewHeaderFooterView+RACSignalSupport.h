@@ -1,4 +1,4 @@
-//
+//!
 //  UITableViewHeaderFooterView+RACSignalSupport.h
 //  ReactiveCocoa
 //

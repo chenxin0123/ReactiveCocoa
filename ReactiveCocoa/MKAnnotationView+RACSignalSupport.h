@@ -1,4 +1,4 @@
-//
+//!
 //  MKAnnotationView+RACSignalSupport.h
 //  ReactiveCocoa
 //

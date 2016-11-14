@@ -1,4 +1,4 @@
-//
+//!
 //  MKAnnotationView+RACSignalSupport.m
 //  ReactiveCocoa
 //
@@ -21,7 +21,7 @@
 
 	signal = [[[self
 		rac_signalForSelector:@selector(prepareForReuse)]
-		mapReplace:RACUnit.defaultUnit]
+		mapReplace:RACUnit.defaultUnit]//本来是个空数组
 		setNameWithFormat:@"%@ -rac_prepareForReuseSignal", self.rac_description];
 
 	objc_setAssociatedObject(self, _cmd, signal, OBJC_ASSOCIATION_RETAIN_NONATOMIC);

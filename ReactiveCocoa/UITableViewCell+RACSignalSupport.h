@@ -1,4 +1,4 @@
-//
+//!
 //  UITableViewCell+RACSignalSupport.h
 //  ReactiveCocoa
 //
