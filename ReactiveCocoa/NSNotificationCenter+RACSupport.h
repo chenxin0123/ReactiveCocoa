@@ -1,4 +1,4 @@
-//
+//!
 //  NSNotificationCenter+RACSupport.h
 //  ReactiveCocoa
 //
