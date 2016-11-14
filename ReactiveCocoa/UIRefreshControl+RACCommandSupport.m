@@ -1,4 +1,4 @@
-//
+//!
 //  UIRefreshControl+RACCommandSupport.m
 //  ReactiveCocoa
 //
@@ -39,14 +39,15 @@ static void *UIRefreshControlDisposableKey = &UIRefreshControlDisposableKey;
 	RACDisposable *executionDisposable = [[[[self
 		rac_signalForControlEvents:UIControlEventValueChanged]
 		map:^(UIRefreshControl *x) {
+            // 调用beginRefreshing进入这里 触发命令执行
 			return [[[command
 				execute:x]
-				catchTo:[RACSignal empty]]
+				catchTo:[RACSignal empty]]// error -> complete
 				then:^{
-					return [RACSignal return:x];
+					return [RACSignal return:x];// 将x传给下面的订阅者
 				}];
 		}]
-		concat]
+		concat] // one by one 先执行完再complete
 		subscribeNext:^(UIRefreshControl *x) {
 			[x endRefreshing];
 		}];

@@ -1,4 +1,4 @@
-//
+//!
 //  UIBarButtonItem+RACCommandSupport.m
 //  ReactiveCocoa
 //
@@ -30,7 +30,7 @@ static void *UIControlEnabledDisposableKey = &UIControlEnabledDisposableKey;
 	[disposable dispose];
 	
 	if (command == nil) return;
-	
+	// 将enabled属性与command.enabled绑定
 	disposable = [command.enabled setKeyPath:@keypath(self.enabled) onObject:self];
 	objc_setAssociatedObject(self, UIControlEnabledDisposableKey, disposable, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	

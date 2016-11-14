@@ -1,4 +1,4 @@
-//
+//!
 //  UIButton+RACCommandSupport.m
 //  ReactiveCocoa
 //
@@ -31,15 +31,17 @@ static void *UIButtonEnabledDisposableKey = &UIButtonEnabledDisposableKey;
 	
 	if (command == nil) return;
 	
+    /// 绑定enabled
 	disposable = [command.enabled setKeyPath:@keypath(self.enabled) onObject:self];
 	objc_setAssociatedObject(self, UIButtonEnabledDisposableKey, disposable, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	
 	[self rac_hijackActionAndTargetIfNeeded];
 }
 
+/// UIControlEventTouchUpInside
+/// 旧的target以及action仍然有效 新增hijackSelector
 - (void)rac_hijackActionAndTargetIfNeeded {
 	SEL hijackSelector = @selector(rac_commandPerformAction:);
-	
 	for (NSString *selector in [self actionsForTarget:self forControlEvent:UIControlEventTouchUpInside]) {
 		if (hijackSelector == NSSelectorFromString(selector)) {
 			return;

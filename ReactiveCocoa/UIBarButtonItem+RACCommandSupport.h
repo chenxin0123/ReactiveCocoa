@@ -1,4 +1,4 @@
-//
+//!
 //  UIBarButtonItem+RACCommandSupport.h
 //  ReactiveCocoa
 //

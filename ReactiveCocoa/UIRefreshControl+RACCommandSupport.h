@@ -1,4 +1,4 @@
-//
+//!
 //  UIRefreshControl+RACCommandSupport.h
 //  ReactiveCocoa
 //
