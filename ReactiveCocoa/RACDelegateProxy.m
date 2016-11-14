@@ -1,4 +1,4 @@
-//
+//!
 //  RACDelegateProxy.m
 //  ReactiveCocoa
 //
@@ -46,10 +46,12 @@
 	return YES;
 }
 
+/// invocation with original delegate
 - (void)forwardInvocation:(NSInvocation *)invocation {
 	[invocation invokeWithTarget:self.rac_proxiedDelegate];
 }
 
+/// 这里也是为了兼容原delegate
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)selector {
 	// Look for the selector as an optional instance method.
 	struct objc_method_description methodDescription = protocol_getMethodDescription(_protocol, selector, NO, YES);
@@ -64,6 +66,7 @@
 	return [NSMethodSignature signatureWithObjCTypes:methodDescription.types];
 }
 
+/// 同上
 - (BOOL)respondsToSelector:(SEL)selector {
 	// Add the delegate to the autorelease pool, so it doesn't get deallocated
 	// between this method call and -forwardInvocation:.

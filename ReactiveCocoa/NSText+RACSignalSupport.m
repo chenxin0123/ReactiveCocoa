@@ -1,4 +1,4 @@
-//
+//!
 //  NSText+RACSignalSupport.m
 //  ReactiveCocoa
 //

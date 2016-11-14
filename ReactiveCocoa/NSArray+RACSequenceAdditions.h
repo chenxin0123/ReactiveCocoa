@@ -1,4 +1,4 @@
-//
+//!
 //  NSArray+RACSequenceAdditions.h
 //  ReactiveCocoa
 //

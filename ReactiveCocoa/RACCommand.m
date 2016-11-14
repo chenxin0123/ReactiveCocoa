@@ -140,6 +140,7 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 	_signalBlock = [signalBlock copy];
 
 	// A signal of additions to `activeExecutionSignals`.
+    // KVO activeExecutionSignals activeExecutionSignals是手动KVO的
 	RACSignal *newActiveExecutionSignals = [[[[[self
 		rac_valuesAndChangesForKeyPath:@keypath(self.activeExecutionSignals) options:NSKeyValueObservingOptionNew observer:nil]
 		reduceEach:^(id _, NSDictionary *change) {
@@ -152,6 +153,8 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 		publish]
 		autoconnect];
 
+    // 订阅_executionSignals 返回的是当前正在执行的信号数组
+    // 为了收到最新创建的信号 要先订阅这个信号 再执行excute
 	_executionSignals = [[[newActiveExecutionSignals
 		map:^(RACSignal *signal) {
 			return [signal catchTo:[RACSignal empty]];
@@ -164,6 +167,9 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 	//
 	// In other words, if someone subscribes to `errors` _after_ an execution
 	// has started, it should still receive any error from that execution.
+    // 订阅所有正在执行的信号
+    // 执行的信号中出现错误 会被以sendNext的形式发出 ignoreValues只接收error
+    // excute返回的是RACReplaySubject 放入newActiveExecutionSignals的也是RACReplaySubject 这就避免了这里重复订阅造成副作用重复执行
 	RACMulticastConnection *errorsConnection = [[[newActiveExecutionSignals
 		flattenMap:^(RACSignal *signal) {
 			return [[signal
@@ -175,6 +181,7 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 		deliverOn:RACScheduler.mainThreadScheduler]
 		publish];
 	
+    // excute创建的信号发生的错误通过这个属性发出 这里接收到的任何next值都是错误
 	_errors = [errorsConnection.signal setNameWithFormat:@"%@ -errors", self];
 	[errorsConnection connect];
 
@@ -237,7 +244,7 @@ const NSInteger RACCommandErrorNotEnabled = 1;
 ///    2.multicast
 ///    3.connect
 ///    4.addActiveExecutionSignal
-/// 实际返回的是一个RACReplaySubject
+/// 实际返回的是一个RACReplaySubject 保证创建的信号被订阅且只会被订阅一次
 - (RACSignal *)execute:(id)input {
 	// `immediateEnabled` is guaranteed to send a value upon subscription, so
 	// -first is acceptable here.

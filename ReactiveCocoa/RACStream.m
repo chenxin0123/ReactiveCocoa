@@ -150,7 +150,7 @@
 	}] setNameWithFormat:@"[%@] -ignore: %@", self.name, [value rac_description]];
 }
 
-/// 将RACTuple类型值降维 流的值类型必须为RACTuple 返回新的流
+/// 将RACTuple类型值降维 流的值类型必须为RACTuple 返回新的流 reduceBlock的参数个数跟RACTuple的值数量相同
 - (instancetype)reduceEach:(id (^)())reduceBlock {
 	NSCParameterAssert(reduceBlock != nil);
 

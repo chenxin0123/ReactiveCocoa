@@ -1,4 +1,4 @@
-//
+//!
 //  UIControl+RACSignalSupportPrivate.m
 //  ReactiveCocoa
 //
@@ -17,6 +17,9 @@
 
 @implementation UIControl (RACSignalSupportPrivate)
 
+/// 创建一个新的RACChannel 返回channel.leadingTerminal
+/// 一旦controlEvents触发 则返回valueForKey:key的值给channel.leadingTerminal的订阅者
+/// 一旦channel.leadingTerminal收到值则触发setValue:forKey:
 - (RACChannelTerminal *)rac_channelForControlEvents:(UIControlEvents)controlEvents key:(NSString *)key nilValue:(id)nilValue {
 	NSCParameterAssert(key.length > 0);
 	key = [key copy];
@@ -26,12 +29,14 @@
 		[channel.followingTerminal sendCompleted];
 	}]];
 
+    
 	RACSignal *eventSignal = [[[self
 		rac_signalForControlEvents:controlEvents]
 		mapReplace:key]
 		takeUntil:[[channel.followingTerminal
 			ignoreValues]
 			catchTo:RACSignal.empty]];
+    
 	[[self
 		rac_liftSelector:@selector(valueForKey:) withSignals:eventSignal, nil]
 		subscribe:channel.followingTerminal];

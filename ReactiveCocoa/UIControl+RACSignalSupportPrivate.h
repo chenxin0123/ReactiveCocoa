@@ -1,4 +1,4 @@
-//
+//!
 //  UIControl+RACSignalSupportPrivate.h
 //  ReactiveCocoa
 //

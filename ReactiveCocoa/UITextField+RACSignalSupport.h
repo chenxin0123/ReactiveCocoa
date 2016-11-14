@@ -1,4 +1,4 @@
-//
+//!
 //  UITextField+RACSignalSupport.h
 //  ReactiveCocoa
 //

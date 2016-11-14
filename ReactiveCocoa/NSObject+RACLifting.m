@@ -1,4 +1,4 @@
-//
+//!
 //  NSObject+RACLifting.m
 //  ReactiveCocoa
 //
@@ -16,6 +16,9 @@
 
 @implementation NSObject (RACLifting)
 
+/// 每次收到arguments发出的值 selector对应的方法就会被调
+/// arguments会立即被订阅 返回RACReplaySubject
+/// map返回值 replayLast
 - (RACSignal *)rac_liftSelector:(SEL)selector withSignalOfArguments:(RACSignal *)arguments {
 	NSCParameterAssert(selector != NULL);
 	NSCParameterAssert(arguments != nil);

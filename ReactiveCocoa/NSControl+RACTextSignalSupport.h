@@ -1,4 +1,4 @@
-//
+//!
 //  NSControl+RACTextSignalSupport.h
 //  ReactiveCocoa
 //

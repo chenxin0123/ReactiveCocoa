@@ -517,7 +517,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 }
 
 /// self必须是信号的信号
-/// 订阅self发出的信号 但是上限是maxConcurrent
+/// 订阅self发出的信号 但是上限是maxConcurrent 超出maxConcurrent的信号放入queuedSignals排队等待
 /// maxConcurrent == 0 无限制
 /// 所有信号都complete才结束
 - (RACSignal *)flatten:(NSUInteger)maxConcurrent {
@@ -999,6 +999,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 /// initially 使用了这个方法 来保证信号每次被订阅都会执行一个block
 /// then 使用这个方法来创建新的信号
 /// replayLazily也使用了这个方法来延迟connect
+/// rac_textSignal用这个方法返回[RACSignal return:self]来防止循环引用
 + (RACSignal *)defer:(RACSignal * (^)(void))block {
 	NSCParameterAssert(block != NULL);
 

@@ -1,4 +1,4 @@
-//
+//!
 //  UITextView+RACSignalSupport.m
 //  ReactiveCocoa
 //
@@ -34,6 +34,10 @@ static void RACUseDelegateProxy(UITextView *self) {
 	return proxy;
 }
 
+/// 注意 因为调用这个方法后Delegate就变了 所以不要在这个方法之后再设置self.delegate
+/// 将会替换现有的代理为新创建的RACDelegateProxy实例 原代理变成RACDelegateProxy的一个实例
+/// RACDelegateProxy将会在forwardInvocation中InvocationWith原代理
+/// 会立即发送当前值
 - (RACSignal *)rac_textSignal {
 	@weakify(self);
 	RACSignal *signal = [[[[[RACSignal

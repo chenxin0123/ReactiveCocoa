@@ -1,4 +1,4 @@
-//
+//!
 //  UITextView+RACSignalSupport.h
 //  ReactiveCocoa
 //

@@ -1,4 +1,4 @@
-//
+//!
 //  UIControl+RACSignalSupport.m
 //  ReactiveCocoa
 //
@@ -17,6 +17,7 @@
 
 @implementation UIControl (RACSignalSupport)
 
+/// controlEvents触发时调用 [subscriber sendNext:sender]
 - (RACSignal *)rac_signalForControlEvents:(UIControlEvents)controlEvents {
 	@weakify(self);
 

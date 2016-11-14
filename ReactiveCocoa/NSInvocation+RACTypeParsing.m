@@ -166,6 +166,7 @@
 	}
 }
 
+/// 返回值 如果是void 返回RACUnit.defaultUnit
 - (id)rac_returnValue {
 #define WRAP_AND_RETURN(type) \
 	do { \

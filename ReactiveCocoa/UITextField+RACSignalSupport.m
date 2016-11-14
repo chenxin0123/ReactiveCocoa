@@ -1,4 +1,4 @@
-//
+//!
 //  UITextField+RACSignalSupport.m
 //  ReactiveCocoa
 //
@@ -17,6 +17,7 @@
 
 @implementation UITextField (RACSignalSupport)
 
+/// 监听text值 订阅的时候会立刻返回当前值
 - (RACSignal *)rac_textSignal {
 	@weakify(self);
 	return [[[[[RACSignal
@@ -32,6 +33,7 @@
 		setNameWithFormat:@"%@ -rac_textSignal", self.rac_description];
 }
 
+/// 返回一个管道一端 既可以监听值的变化 又可以订阅其他值来setValueForKey 不会立刻返回当前值
 - (RACChannelTerminal *)rac_newTextChannel {
 	return [self rac_channelForControlEvents:UIControlEventAllEditingEvents key:@keypath(self.text) nilValue:@""];
 }
