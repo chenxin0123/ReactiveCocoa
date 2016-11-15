@@ -121,7 +121,7 @@ static CFMutableArrayRef RACCreateDisposablesArray(void) {
 }
 
 #pragma mark Addition and Removal
-
+/// 如果self已经disposed disposable立即被dispose
 - (void)addDisposable:(RACDisposable *)disposable {
 	NSCParameterAssert(disposable != self);
 	if (disposable == nil || disposable.disposed) return;

@@ -37,10 +37,12 @@
 			ignoreValues]
 			catchTo:RACSignal.empty]];
     
+    // 将值发出去 replaylast
 	[[self
 		rac_liftSelector:@selector(valueForKey:) withSignals:eventSignal, nil]
 		subscribe:channel.followingTerminal];
 
+    // 用收进来的值setValue:forKey:
 	RACSignal *valuesSignal = [channel.followingTerminal
 		map:^(id value) {
 			return value ?: nilValue;

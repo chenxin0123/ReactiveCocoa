@@ -1,4 +1,4 @@
-//
+//~
 //  NSObject+RACAppKitBindings.m
 //  ReactiveCocoa
 //

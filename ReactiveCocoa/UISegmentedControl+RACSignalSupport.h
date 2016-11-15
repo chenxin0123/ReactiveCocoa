@@ -1,4 +1,4 @@
-//
+//!
 //  UISegmentedControl+RACSignalSupport.h
 //  ReactiveCocoa
 //

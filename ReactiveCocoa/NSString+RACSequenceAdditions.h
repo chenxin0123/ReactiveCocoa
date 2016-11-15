@@ -1,4 +1,4 @@
-//
+//!
 //  NSString+RACSequenceAdditions.h
 //  ReactiveCocoa
 //
@@ -16,6 +16,7 @@
 /// composed character sequence in the receiver.
 ///
 /// Mutating the receiver will not affect the sequence after it's been created.
+/// RACStringSequence
 @property (nonatomic, copy, readonly) RACSequence *rac_sequence;
 
 @end

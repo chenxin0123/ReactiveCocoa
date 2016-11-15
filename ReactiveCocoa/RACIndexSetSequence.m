@@ -1,4 +1,4 @@
-//
+//!
 //  RACIndexSetSequence.m
 //  ReactiveCocoa
 //

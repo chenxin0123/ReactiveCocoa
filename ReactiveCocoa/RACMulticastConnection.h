@@ -25,7 +25,7 @@
 /// -[RACSignal publish] or -[RACSignal multicast:].
 /// 实现所有订阅者共享一次订阅 防止订阅时产生的副作用发生多次
 /// 两种使用方法：
-/// 1. connect 然后订阅signal
+/// 1. connect 然后订阅signal 或者订阅signal然后connect
 /// 2. 订阅autoconnect
 @interface RACMulticastConnection : NSObject
 

@@ -1,4 +1,4 @@
-//
+//!
 //  RACStringSequence.m
 //  ReactiveCocoa
 //

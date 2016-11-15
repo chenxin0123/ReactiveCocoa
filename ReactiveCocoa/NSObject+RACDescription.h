@@ -1,4 +1,4 @@
-//
+//!
 //  NSObject+RACDescription.h
 //  ReactiveCocoa
 //

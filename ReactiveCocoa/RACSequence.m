@@ -303,9 +303,10 @@
 }
 
 #pragma mark NSFastEnumeration
-/// 关于这个方法的详情 看下面两个博客就够了
+/// 关于这个方法的详情 看下面的博客
 /// https://www.bignerdranch.com/blog/fast-enumeration-part-2/
 /// http://www.cocoawithlove.com/2008/05/implementing-countbyenumeratingwithstat.html
+/// http://blog.leichunfeng.com/blog/2016/06/20/objective-c-fast-enumeration-implementation-principle/
 - (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(__unsafe_unretained id *)stackbuf count:(NSUInteger)len {
 	if (state->state == ULONG_MAX) {
 		// Enumeration has completed.

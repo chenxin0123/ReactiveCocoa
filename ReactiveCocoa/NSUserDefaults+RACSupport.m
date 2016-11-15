@@ -1,4 +1,4 @@
-//
+//!
 //  NSUserDefaults+RACSupport.m
 //  ReactiveCocoa
 //
@@ -22,6 +22,8 @@
 	RACScheduler *scheduler = [RACScheduler scheduler];
 	__block BOOL ignoreNextValue = NO;
 	
+    // 订阅 这样followingTerminal的订阅者可以收到变化的值
+    // filter ignoreNextValue 防止循环发送值
 	@weakify(self);
 	[[[[[[[NSNotificationCenter.defaultCenter
 		rac_addObserverForName:NSUserDefaultsDidChangeNotification object:self]
@@ -42,6 +44,7 @@
 		takeUntil:self.rac_willDeallocSignal]
 		subscribe:channel.leadingTerminal];
 	
+    // 这样可以收到外面收到的值
 	[[channel.leadingTerminal
 		deliverOn:scheduler]
 		subscribeNext:^(id value) {

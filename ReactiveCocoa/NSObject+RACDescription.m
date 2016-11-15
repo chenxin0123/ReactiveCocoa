@@ -1,4 +1,4 @@
-//
+//!
 //  NSObject+RACDescription.m
 //  ReactiveCocoa
 //
@@ -9,6 +9,8 @@
 #import "NSObject+RACDescription.h"
 #import "RACTuple.h"
 
+/// 需要设置RAC_DEBUG_SIGNAL_NAMES才生效
+/// Xcode –> Product –>Scheme –> Edit Schemt –> Arguments ,添加新的Environment variable s, RAC_DEBUG_SIGNAL_NAMES,值设为1即可
 @implementation NSObject (RACDescription)
 
 - (NSString *)rac_description {

@@ -1,4 +1,4 @@
-//
+//!
 //  NSData+RACSupport.m
 //  ReactiveCocoa
 //
@@ -12,6 +12,7 @@
 
 @implementation NSData (RACSupport)
 
+/// 直接读取文件 返回RACReplaySubject
 + (RACSignal *)rac_readContentsOfURL:(NSURL *)URL options:(NSDataReadingOptions)options scheduler:(RACScheduler *)scheduler {
 	NSCParameterAssert(scheduler != nil);
 	

@@ -1,4 +1,4 @@
-//
+//!
 //  NSIndexSet+RACSequenceAdditions.m
 //  ReactiveCocoa
 //

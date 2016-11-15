@@ -1,4 +1,4 @@
-//
+//!
 //  UIImagePickerController+RACSignalSupport.h
 //  ReactiveCocoa
 //

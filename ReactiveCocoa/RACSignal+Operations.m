@@ -357,10 +357,11 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 
 		RACDisposable *selfDisposable = [self subscribeNext:^(id x) {
 			@synchronized (values) {
+                // 当前没缓存的值才开始定时 之后的值直接缓存
 				if (values.count == 0) {
 					timerDisposable.disposable = [scheduler afterDelay:interval schedule:flushValues];
 				}
-
+                // 收到的值缓存起来
 				[values addObject:x ?: RACTupleNil.tupleNil];
 			}
 		} error:^(NSError *error) {
@@ -483,7 +484,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 	RACSignal *result = [self combineLatest:signals];
 
 	// Although we assert this condition above, older versions of this method
-	// supported this argument being nil. Avoid crashing Release builds of
+	// supported this argument being nil. Avoid crasgrouphing Release builds of
 	// apps that depended on that.
 	if (reduceBlock != nil) result = [result reduceEach:reduceBlock];
 
@@ -1174,6 +1175,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 /// keyBlock返回值对应的key 根据这个key进行分组
 /// transformBlock返回next对应的值 将这个转换后的值发给对应的分组
 /// 新的next对应的分组RACGroupedSignal会被立刻发送出去
+/// 订阅者收到的是整个分组RACGroupedSignal:RACSubject且一个分组只会被收到一次
 - (RACSignal *)groupBy:(id<NSCopying> (^)(id object))keyBlock transform:(id (^)(id object))transformBlock {
 	NSCParameterAssert(keyBlock != NULL);
 

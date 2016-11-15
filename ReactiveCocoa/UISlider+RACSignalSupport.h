@@ -1,4 +1,4 @@
-//
+//!
 //  UISlider+RACSignalSupport.h
 //  ReactiveCocoa
 //

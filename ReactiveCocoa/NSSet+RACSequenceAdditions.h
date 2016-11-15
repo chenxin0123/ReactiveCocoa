@@ -1,4 +1,4 @@
-//
+//!
 //  NSSet+RACSequenceAdditions.h
 //  ReactiveCocoa
 //

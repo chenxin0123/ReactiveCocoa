@@ -1,4 +1,4 @@
-//
+//!
 //  NSString+RACSupport.h
 //  ReactiveCocoa
 //

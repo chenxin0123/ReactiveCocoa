@@ -370,6 +370,7 @@ static Class RACSwizzleClass(NSObject *self) {
 /// 如果已有实现 则原有实现会先调用 只是添加了多余的实现 返回值并不会改变
 /// 如果无实现 参数类型默认id类型 返回值默认void
 /// 指定protocol只是能更精确的获取参数类型以及返回值
+/// 返回的实际上是一个RACSubject
 - (RACSignal *)rac_signalForSelector:(SEL)selector {
 	NSCParameterAssert(selector != NULL);
 

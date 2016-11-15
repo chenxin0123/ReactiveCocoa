@@ -1,4 +1,4 @@
-//
+//!
 //  UIGestureRecognizer+RACSignalSupport.m
 //  ReactiveCocoa
 //

@@ -1,4 +1,4 @@
-//
+//!
 //  NSEnumerator+RACSequenceAdditions.h
 //  ReactiveCocoa
 //

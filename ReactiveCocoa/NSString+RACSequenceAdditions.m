@@ -1,4 +1,4 @@
-//
+//!
 //  NSString+RACSequenceAdditions.m
 //  ReactiveCocoa
 //

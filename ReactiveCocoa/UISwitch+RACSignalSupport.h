@@ -1,4 +1,4 @@
-//
+//!
 //  UISwitch+RACSignalSupport.h
 //  ReactiveCocoa
 //

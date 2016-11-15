@@ -1,4 +1,4 @@
-//
+//!
 //  RACBehaviorSubject.m
 //  ReactiveCocoa
 //
@@ -21,6 +21,7 @@
 
 #pragma mark Lifecycle
 
+/// 订阅的时候会把最后的值发给订阅者 。。。 直接startWith:value ReplaySubject不就好了？？
 + (instancetype)behaviorSubjectWithDefaultValue:(id)value {
 	RACBehaviorSubject *subject = [self subject];
 	subject.currentValue = value;
@@ -45,7 +46,7 @@
 }
 
 #pragma mark RACSubscriber
-
+/// 保存最后的值
 - (void)sendNext:(id)value {
 	@synchronized (self) {
 		self.currentValue = value;

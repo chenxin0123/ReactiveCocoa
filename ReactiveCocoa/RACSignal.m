@@ -42,13 +42,16 @@
 
 /// 用startLazilyWithScheduler。。。创建一个新的信号 然后publish 再connect
 /// 原始信号立即就被订阅
+/// 订阅返回的信号 触发订阅信号内部捕获的connection的signal 得到的只是RACReplaySubject发出的值
 + (RACSignal *)startEagerlyWithScheduler:(RACScheduler *)scheduler block:(void (^)(id<RACSubscriber> subscriber))block {
 	NSCParameterAssert(scheduler != nil);
 	NSCParameterAssert(block != NULL);
 
 	RACSignal *signal = [self startLazilyWithScheduler:scheduler block:block];
 	// Subscribe to force the lazy signal to call its block.
+    // 触发block立即被执行
 	[[signal publish] connect];
+    
 	return [signal setNameWithFormat:@"+startEagerlyWithScheduler: %@ block:", scheduler];
 }
 
@@ -99,7 +102,6 @@
 /// 返回一个新信号R R的订阅过程中将订阅原始信号O
 /// 抓取原始信号O的每个next值 用该值通过bindingBlock生成一个新的信号N
 /// 将信号N发送的next值发给R订阅者
-RACReturnSignal 来实现
 - (RACSignal *)bind:(RACStreamBindBlock (^)(void))block {
 	NSCParameterAssert(block != NULL);
 
